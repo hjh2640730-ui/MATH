@@ -299,28 +299,40 @@ window.doTeacherLogin = function() {
 //  PARENT LOGIN
 // ================================================================
 function renderParentLogin() {
+  const students = Store.students();
   return `
   <div class="login-wrapper">
-    <div class="login-card">
-      <div class="login-icon">🔑</div>
-      <h2 class="login-title">학부모 로그인</h2>
-      <p class="login-sub">자녀의 학생 코드 4자리를 입력해 주세요</p>
-      <div class="form-group">
-        <label class="form-label">학생 코드</label>
-        <input id="code-input" type="text" class="form-input" placeholder="예: 1234" maxlength="8"
-          style="font-size:1.4rem;text-align:center;letter-spacing:0.3em;font-weight:700"
-          onkeydown="if(event.key==='Enter')doParentLogin()">
-      </div>
-      <div id="code-error" class="login-error hidden">학생을 찾을 수 없습니다. 코드를 확인해 주세요.</div>
-      <button class="btn btn-primary btn-full mt-16" onclick="doParentLogin()">확인</button>
-      <button class="btn btn-ghost btn-full mt-8" onclick="nav('landing')">← 돌아가기</button>
+    <div class="login-card" style="max-width:440px">
+      <div class="login-icon">👨‍👩‍👧</div>
+      <h2 class="login-title">학부모 페이지</h2>
+      <p class="login-sub">자녀 이름을 선택해 주세요</p>
+      ${students.length === 0 ? `
+        <div style="text-align:center;color:var(--text-sub);padding:24px 0;font-size:0.9rem">
+          등록된 학생이 없습니다.<br>선생님께 문의해 주세요.
+        </div>
+      ` : `
+        <div style="display:grid;gap:10px;margin-bottom:20px">
+          ${students.map(s => `
+            <button onclick="doParentLogin('${s.id}')"
+              style="display:flex;align-items:center;gap:14px;padding:14px 18px;background:var(--gray-light);border:1.5px solid var(--gray-border);border-radius:12px;cursor:pointer;font-family:inherit;transition:all 0.15s;text-align:left"
+              onmouseover="this.style.borderColor='var(--primary)';this.style.background='var(--primary-light)'"
+              onmouseout="this.style.borderColor='var(--gray-border)';this.style.background='var(--gray-light)'">
+              <span style="font-size:2rem">👤</span>
+              <div>
+                <div style="font-size:1rem;font-weight:700;color:var(--text)">${esc(s.name)}</div>
+                <div style="font-size:0.82rem;color:var(--text-sub)">${esc(s.grade || '')}</div>
+              </div>
+            </button>
+          `).join('')}
+        </div>
+      `}
+      <button class="btn btn-ghost btn-full" onclick="nav('landing')">← 돌아가기</button>
     </div>
   </div>`;
 }
 
-window.doParentLogin = function() {
-  const code = document.getElementById('code-input')?.value?.trim();
-  const student = Store.students().find(s => s.code === code);
+window.doParentLogin = function(sid) {
+  const student = Store.students().find(s => s.id === sid);
   if (student) {
     S.parentStudentId = student.id;
     S.parentTab = 'progress';
@@ -328,8 +340,6 @@ window.doParentLogin = function() {
     S.cal = { year: new Date().getFullYear(), month: new Date().getMonth() };
     S.page = 'parent';
     render();
-  } else {
-    document.getElementById('code-error')?.classList.remove('hidden');
   }
 };
 
@@ -394,7 +404,7 @@ function renderTeacherStudents() {
         <div class="student-item">
           <div class="student-info">
             <div class="student-name">${esc(s.name)}</div>
-            <div class="student-meta">${esc(s.grade || '')} · 코드: <strong>${esc(s.code)}</strong></div>
+            <div class="student-meta">${esc(s.grade || '')}</div>
             <div class="chip-group">
               ${wbs.map(w => `<span class="chip">📗 ${esc(w.title)}</span>`).join('')}
               ${wbs.length === 0 ? '<span style="font-size:0.78rem;color:var(--text-sub)">배정된 문제집 없음</span>' : ''}
@@ -428,10 +438,6 @@ window.openAddStudentModal = function() {
       <input id="m-grade" type="text" class="form-input" placeholder="예: 중2, 고1">
     </div>
     <div class="form-group">
-      <label class="form-label">학생 코드 (학부모 로그인용)</label>
-      <input id="m-code" type="text" class="form-input" placeholder="숫자 4자리 권장">
-    </div>
-    <div class="form-group">
       <label class="form-label">배정 문제집</label>
       <div style="display:grid;gap:6px;margin-top:4px">
         ${workbooks.map(w => `
@@ -453,12 +459,9 @@ window.openAddStudentModal = function() {
 window.saveNewStudent = function() {
   const name = document.getElementById('m-name')?.value.trim();
   const grade = document.getElementById('m-grade')?.value.trim();
-  const code = document.getElementById('m-code')?.value.trim();
-  if (!name || !code) { showToast('이름과 코드를 입력해 주세요.'); return; }
-  const existing = Store.students().find(s => s.code === code);
-  if (existing) { showToast('이미 사용 중인 코드입니다.'); return; }
+  if (!name) { showToast('이름을 입력해 주세요.'); return; }
   const wbIds = [...document.querySelectorAll('.m-wb:checked')].map(el => el.value);
-  const student = { id: uid(), name, grade, code, workbookIds: wbIds };
+  const student = { id: uid(), name, grade, workbookIds: wbIds };
   const arr = Store.students();
   arr.push(student);
   Store.saveStudents(arr);
@@ -482,10 +485,6 @@ window.openEditStudentModal = function(sid) {
       <input id="m-grade" type="text" class="form-input" value="${esc(student.grade || '')}">
     </div>
     <div class="form-group">
-      <label class="form-label">학생 코드</label>
-      <input id="m-code" type="text" class="form-input" value="${esc(student.code)}">
-    </div>
-    <div class="form-group">
       <label class="form-label">배정 문제집</label>
       <div style="display:grid;gap:6px;margin-top:4px">
         ${workbooks.map(w => `
@@ -506,12 +505,9 @@ window.openEditStudentModal = function(sid) {
 window.saveEditStudent = function(sid) {
   const name = document.getElementById('m-name')?.value.trim();
   const grade = document.getElementById('m-grade')?.value.trim();
-  const code = document.getElementById('m-code')?.value.trim();
-  if (!name || !code) { showToast('이름과 코드를 입력해 주세요.'); return; }
-  const dup = Store.students().find(s => s.code === code && s.id !== sid);
-  if (dup) { showToast('이미 사용 중인 코드입니다.'); return; }
+  if (!name) { showToast('이름을 입력해 주세요.'); return; }
   const wbIds = [...document.querySelectorAll('.m-wb:checked')].map(el => el.value);
-  const arr = Store.students().map(s => s.id === sid ? {...s, name, grade, code, workbookIds: wbIds} : s);
+  const arr = Store.students().map(s => s.id === sid ? {...s, name, grade, workbookIds: wbIds} : s);
   Store.saveStudents(arr);
   closeModal();
   showToast('수정되었습니다.');

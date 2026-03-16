@@ -83,8 +83,7 @@ function nav(page) { S.page = page; render(); }
 //  INIT DEMO DATA
 // ================================================================
 function initDemo() {
-  if (Store.get('initialized_v2')) return;
-  // 기존 데이터 초기화
+  if (Store.get('initialized_v3')) return;
   localStorage.removeItem(KEY + 'students');
   localStorage.removeItem(KEY + 'workbooks');
   localStorage.removeItem(KEY + 'progress');
@@ -97,28 +96,29 @@ function initDemo() {
   ];
 
   const workbooks = [
-    // ── 김시영 ──────────────────────────────────────
+    // ── 김시영 ─────────────────────────────────────
     {
       id: 'wb1',
       title: 'RPM 공통수학1',
       chapters: [
         { id: 'w1c1', title: 'Ⅰ. 다항식', items: [
           { id: 'w1c1i1', title: '1. 다항식의 연산' },
-          { id: 'w1c1i2', title: '2. 나머지정리' },
+          { id: 'w1c1i2', title: '2. 항등식과 나머지정리' },
           { id: 'w1c1i3', title: '3. 인수분해' },
         ]},
         { id: 'w1c2', title: 'Ⅱ. 방정식과 부등식', items: [
-          { id: 'w1c2i1', title: '4. 복소수' },
-          { id: 'w1c2i2', title: '5. 이차방정식' },
-          { id: 'w1c2i3', title: '6. 이차방정식과 이차함수' },
-          { id: 'w1c2i4', title: '7. 여러 가지 방정식' },
-          { id: 'w1c2i5', title: '8. 여러 가지 부등식' },
+          { id: 'w1c2i1', title: '1. 복소수' },
+          { id: 'w1c2i2', title: '2. 이차방정식' },
+          { id: 'w1c2i3', title: '3. 이차방정식과 이차함수' },
+          { id: 'w1c2i4', title: '4. 여러 가지 방정식' },
+          { id: 'w1c2i5', title: '5. 여러 가지 부등식' },
         ]},
-        { id: 'w1c3', title: 'Ⅲ. 도형의 방정식', items: [
-          { id: 'w1c3i1', title: '9. 평면좌표' },
-          { id: 'w1c3i2', title: '10. 직선의 방정식' },
-          { id: 'w1c3i3', title: '11. 원의 방정식' },
-          { id: 'w1c3i4', title: '12. 도형의 이동' },
+        { id: 'w1c3', title: 'Ⅲ. 경우의 수', items: [
+          { id: 'w1c3i1', title: '1. 경우의 수와 순열' },
+          { id: 'w1c3i2', title: '2. 조합' },
+        ]},
+        { id: 'w1c4', title: 'Ⅳ. 행렬', items: [
+          { id: 'w1c4i1', title: '1. 행렬' },
         ]},
       ],
     },
@@ -128,49 +128,44 @@ function initDemo() {
       chapters: [
         { id: 'w2c1', title: 'Ⅰ. 다항식', items: [
           { id: 'w2c1i1', title: '01. 다항식의 연산' },
-          { id: 'w2c1i2', title: '02. 나머지정리' },
-          { id: 'w2c1i3', title: '03. 인수분해' },
+          { id: 'w2c1i2', title: '02. 나머지 정리와 인수분해' },
         ]},
-        { id: 'w2c2', title: 'Ⅱ. 방정식과 부등식', items: [
-          { id: 'w2c2i1', title: '04. 복소수' },
-          { id: 'w2c2i2', title: '05. 이차방정식' },
-          { id: 'w2c2i3', title: '06. 이차방정식과 이차함수' },
-          { id: 'w2c2i4', title: '07. 여러 가지 방정식' },
-          { id: 'w2c2i5', title: '08. 여러 가지 부등식' },
+        { id: 'w2c2', title: 'Ⅱ. 방정식', items: [
+          { id: 'w2c2i1', title: '03. 복소수' },
+          { id: 'w2c2i2', title: '04. 이차방정식' },
+          { id: 'w2c2i3', title: '05. 이차방정식과 이차함수' },
+          { id: 'w2c2i4', title: '06. 여러 가지 방정식' },
         ]},
-        { id: 'w2c3', title: 'Ⅲ. 도형의 방정식', items: [
-          { id: 'w2c3i1', title: '09. 평면좌표' },
-          { id: 'w2c3i2', title: '10. 직선의 방정식' },
-          { id: 'w2c3i3', title: '11. 원의 방정식' },
-          { id: 'w2c3i4', title: '12. 도형의 이동' },
+        { id: 'w2c3', title: 'Ⅲ. 부등식', items: [
+          { id: 'w2c3i1', title: '07. 일차부등식' },
+          { id: 'w2c3i2', title: '08. 이차부등식' },
+        ]},
+        { id: 'w2c4', title: 'Ⅳ. 순열과 조합', items: [
+          { id: 'w2c4i1', title: '09. 순열과 조합' },
+        ]},
+        { id: 'w2c5', title: 'Ⅴ. 행렬', items: [
+          { id: 'w2c5i1', title: '10. 행렬과 그 연산' },
         ]},
       ],
     },
-    // ── 엄태현 ──────────────────────────────────────
+    // ── 엄태현 ─────────────────────────────────────
     {
       id: 'wb3',
       title: '개념쎈 중1-1',
       chapters: [
-        { id: 'w3c1', title: 'Ⅰ. 소인수분해', items: [
-          { id: 'w3c1i1', title: '1. 소수와 합성수' },
-          { id: 'w3c1i2', title: '2. 거듭제곱과 소인수분해' },
-          { id: 'w3c1i3', title: '3. 최대공약수' },
-          { id: 'w3c1i4', title: '4. 최소공배수' },
+        { id: 'w3c1', title: 'Ⅰ. 수와 연산', items: [
+          { id: 'w3c1i1', title: '1. 소인수분해' },
+          { id: 'w3c1i2', title: '2. 정수와 유리수' },
+          { id: 'w3c1i3', title: '3. 유리수의 계산' },
         ]},
-        { id: 'w3c2', title: 'Ⅱ. 정수와 유리수', items: [
-          { id: 'w3c2i1', title: '5. 정수와 유리수' },
-          { id: 'w3c2i2', title: '6. 유리수의 덧셈과 뺄셈' },
-          { id: 'w3c2i3', title: '7. 유리수의 곱셈과 나눗셈' },
+        { id: 'w3c2', title: 'Ⅱ. 방정식', items: [
+          { id: 'w3c2i1', title: '4. 문자와 식' },
+          { id: 'w3c2i2', title: '5. 일차방정식의 풀이' },
+          { id: 'w3c2i3', title: '6. 일차방정식의 활용' },
         ]},
-        { id: 'w3c3', title: 'Ⅲ. 문자와 식', items: [
-          { id: 'w3c3i1', title: '8. 문자의 사용과 식의 값' },
-          { id: 'w3c3i2', title: '9. 일차식의 계산' },
-          { id: 'w3c3i3', title: '10. 일차방정식의 풀이' },
-          { id: 'w3c3i4', title: '11. 일차방정식의 활용' },
-        ]},
-        { id: 'w3c4', title: 'Ⅳ. 좌표평면과 그래프', items: [
-          { id: 'w3c4i1', title: '12. 순서쌍과 좌표' },
-          { id: 'w3c4i2', title: '13. 그래프와 비례' },
+        { id: 'w3c3', title: 'Ⅲ. 그래프와 비례', items: [
+          { id: 'w3c3i1', title: '7. 좌표평면과 그래프' },
+          { id: 'w3c3i2', title: '8. 정비례와 반비례' },
         ]},
       ],
     },
@@ -181,24 +176,18 @@ function initDemo() {
         { id: 'w4c1', title: 'Ⅰ. 기본 도형', items: [
           { id: 'w4c1i1', title: '1. 기본 도형' },
           { id: 'w4c1i2', title: '2. 위치 관계' },
-          { id: 'w4c1i3', title: '3. 평행선의 성질' },
+          { id: 'w4c1i3', title: '3. 작도와 합동' },
         ]},
-        { id: 'w4c2', title: 'Ⅱ. 작도와 합동', items: [
-          { id: 'w4c2i1', title: '4. 삼각형의 작도' },
-          { id: 'w4c2i2', title: '5. 삼각형의 합동' },
+        { id: 'w4c2', title: 'Ⅱ. 평면도형', items: [
+          { id: 'w4c2i1', title: '4. 다각형' },
+          { id: 'w4c2i2', title: '5. 원과 부채꼴' },
         ]},
-        { id: 'w4c3', title: 'Ⅲ. 평면도형', items: [
-          { id: 'w4c3i1', title: '6. 다각형' },
-          { id: 'w4c3i2', title: '7. 원과 부채꼴' },
+        { id: 'w4c3', title: 'Ⅲ. 입체도형', items: [
+          { id: 'w4c3i1', title: '6. 다면체와 회전체' },
+          { id: 'w4c3i2', title: '7. 입체도형의 겉넓이와 부피' },
         ]},
-        { id: 'w4c4', title: 'Ⅳ. 입체도형', items: [
-          { id: 'w4c4i1', title: '8. 다면체와 회전체' },
-          { id: 'w4c4i2', title: '9. 겉넓이와 부피' },
-        ]},
-        { id: 'w4c5', title: 'Ⅴ. 자료의 정리와 해석', items: [
-          { id: 'w4c5i1', title: '10. 줄기와 잎 그림, 도수분포표' },
-          { id: 'w4c5i2', title: '11. 히스토그램과 도수분포다각형' },
-          { id: 'w4c5i3', title: '12. 상대도수' },
+        { id: 'w4c4', title: 'Ⅳ. 통계', items: [
+          { id: 'w4c4i1', title: '8. 자료의 정리와 해석' },
         ]},
       ],
     },
@@ -207,21 +196,21 @@ function initDemo() {
       title: 'RPM 중1-1',
       chapters: [
         { id: 'w5c1', title: 'Ⅰ. 소인수분해', items: [
-          { id: 'w5c1i1', title: '1. 소수와 합성수' },
-          { id: 'w5c1i2', title: '2. 소인수분해' },
-          { id: 'w5c1i3', title: '3. 최대공약수와 최소공배수' },
+          { id: 'w5c1i1', title: '1. 소인수분해' },
+          { id: 'w5c1i2', title: '2. 최대공약수와 최소공배수' },
         ]},
         { id: 'w5c2', title: 'Ⅱ. 정수와 유리수', items: [
-          { id: 'w5c2i1', title: '4. 정수와 유리수' },
-          { id: 'w5c2i2', title: '5. 유리수의 계산' },
+          { id: 'w5c2i1', title: '3. 정수와 유리수' },
+          { id: 'w5c2i2', title: '4. 정수와 유리수의 계산' },
         ]},
         { id: 'w5c3', title: 'Ⅲ. 문자와 식', items: [
-          { id: 'w5c3i1', title: '6. 문자의 사용과 식의 계산' },
-          { id: 'w5c3i2', title: '7. 일차방정식' },
+          { id: 'w5c3i1', title: '5. 문자의 사용과 식의 계산' },
+          { id: 'w5c3i2', title: '6. 일차방정식의 풀이' },
+          { id: 'w5c3i3', title: '7. 일차방정식의 활용' },
         ]},
         { id: 'w5c4', title: 'Ⅳ. 좌표평면과 그래프', items: [
-          { id: 'w5c4i1', title: '8. 좌표평면' },
-          { id: 'w5c4i2', title: '9. 그래프와 비례' },
+          { id: 'w5c4i1', title: '8. 좌표와 그래프' },
+          { id: 'w5c4i2', title: '9. 정비례와 반비례' },
         ]},
       ],
     },
@@ -230,7 +219,7 @@ function initDemo() {
   Store.saveStudents(students);
   Store.saveWorkbooks(workbooks);
   Store.saveProgress({});
-  Store.set('initialized_v2', true);
+  Store.set('initialized_v3', true);
 }
 
 // ================================================================

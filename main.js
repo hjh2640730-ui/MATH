@@ -1454,8 +1454,8 @@ window.openLightboxParent = function(idx) {
 render(); // show loading screen immediately
 
 async function init() {
-  await seedIfEmpty();
-  setupListeners();
+  setupListeners();   // 즉시 리스너 시작 → 데이터 있으면 바로 로딩 완료
+  seedIfEmpty();      // 빈 DB일 때만 초기 데이터 삽입 (백그라운드)
 }
 init();
 

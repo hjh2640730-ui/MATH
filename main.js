@@ -1,71 +1,220 @@
 // ================================================================
 //  MATH ACADEMY - Learning Management System
-//  localStorage 기반 SPA (Firebase 없이 바로 사용 가능)
+//  Firebase Firestore + Storage 기반 SPA
 // ================================================================
 
-const KEY = 'ma_';
+// ================================================================
+//  FIREBASE IN-MEMORY CACHE
+// ================================================================
+let _students = [];
+let _workbooks = [];
+let _progress = {};   // key: "sid__wid" → { itemId: status }
+let _activities = []; // [{ id, studentId, date, photoUrls, note }]
+let _dataReady = false;
+
 const Store = {
-  get: (k) => { try { return JSON.parse(localStorage.getItem(KEY + k)); } catch { return null; } },
-  set: (k, v) => { try { localStorage.setItem(KEY + k, JSON.stringify(v)); return true; } catch(e) { showToast('저장 공간이 부족합니다. 오래된 사진을 삭제해 주세요.'); return false; } },
-
-  students: () => Store.get('students') || [],
-  saveStudents: (v) => Store.set('students', v),
-
-  workbooks: () => Store.get('workbooks') || [],
-  saveWorkbooks: (v) => Store.set('workbooks', v),
-
-  progress: () => Store.get('progress') || {},
-  saveProgress: (v) => Store.set('progress', v),
-  getStudentProgress: (sid, wid) => (Store.progress()[`${sid}__${wid}`] || {}),
-  setItemStatus: (sid, wid, itemId, status) => {
-    const all = Store.progress();
-    const key = `${sid}__${wid}`;
-    if (!all[key]) all[key] = {};
-    all[key][itemId] = status;
-    Store.saveProgress(all);
-  },
-
-  activities: () => Store.get('activities') || [],
-  saveActivities: (v) => Store.set('activities', v),
-  getDateActivities: (sid, date) => Store.activities().find(a => a.studentId === sid && a.date === date),
-  getActiveDates: (sid) => Store.activities().filter(a => a.studentId === sid).map(a => a.date),
-  getActivityCounts: (sid) => {
+  students:           () => _students,
+  workbooks:          () => _workbooks,
+  getWorkbook:        (id) => _workbooks.find(w => w.id === id),
+  getStudentProgress: (sid, wid) => _progress[`${sid}__${wid}`] || {},
+  getDateActivities:  (sid, date) => _activities.find(a => a.studentId === sid && a.date === date),
+  getActiveDates:     (sid) => _activities.filter(a => a.studentId === sid).map(a => a.date),
+  getActivityCounts:  (sid) => {
     const result = {};
-    Store.activities().filter(a => a.studentId === sid).forEach(a => { result[a.date] = a.photos.length; });
+    _activities.filter(a => a.studentId === sid).forEach(a => {
+      result[a.date] = (a.photoUrls || []).length;
+    });
     return result;
   },
-  upsertActivity: (sid, date, photos, note) => {
-    const all = Store.activities();
-    const idx = all.findIndex(a => a.studentId === sid && a.date === date);
-    if (idx >= 0) { all[idx].photos = photos; all[idx].note = note; }
-    else all.push({ id: Date.now().toString(), studentId: sid, date, photos, note });
-    return Store.saveActivities(all);
-  },
-  addPhoto: (sid, date, dataUrl) => {
-    const all = Store.activities();
-    const idx = all.findIndex(a => a.studentId === sid && a.date === date);
-    if (idx >= 0) { all[idx].photos.push(dataUrl); }
-    else all.push({ id: Date.now().toString(), studentId: sid, date, photos: [dataUrl], note: '' });
-    return Store.saveActivities(all);
-  },
-  removePhoto: (sid, date, photoIdx) => {
-    const all = Store.activities();
-    const idx = all.findIndex(a => a.studentId === sid && a.date === date);
-    if (idx < 0) return;
-    all[idx].photos.splice(photoIdx, 1);
-    if (all[idx].photos.length === 0) all.splice(idx, 1);
-    Store.saveActivities(all);
-  },
-
-  password: () => Store.get('password') || 'admin1234',
+  password: () => localStorage.getItem('ma_password') || 'admin1234',
 };
+
+// ================================================================
+//  INITIAL DATA (seed)
+// ================================================================
+const INITIAL_STUDENTS = [
+  { id: 's1', name: '김범수', grade: '수내고1', workbookIds: [] },
+  { id: 's2', name: '김시영', grade: '죽전고1', workbookIds: ['wb1', 'wb2'] },
+  { id: 's3', name: '엄태현', grade: '대지중1', workbookIds: ['wb3', 'wb4', 'wb5'] },
+];
+
+const INITIAL_WORKBOOKS = [
+  {
+    id: 'wb1',
+    title: 'RPM 공통수학1',
+    chapters: [
+      { id: 'w1c1', title: 'Ⅰ. 다항식', items: [
+        { id: 'w1c1i1', title: '1. 다항식의 연산' },
+        { id: 'w1c1i2', title: '2. 항등식과 나머지정리' },
+        { id: 'w1c1i3', title: '3. 인수분해' },
+      ]},
+      { id: 'w1c2', title: 'Ⅱ. 방정식과 부등식', items: [
+        { id: 'w1c2i1', title: '1. 복소수' },
+        { id: 'w1c2i2', title: '2. 이차방정식' },
+        { id: 'w1c2i3', title: '3. 이차방정식과 이차함수' },
+        { id: 'w1c2i4', title: '4. 여러 가지 방정식' },
+        { id: 'w1c2i5', title: '5. 여러 가지 부등식' },
+      ]},
+      { id: 'w1c3', title: 'Ⅲ. 경우의 수', items: [
+        { id: 'w1c3i1', title: '1. 경우의 수와 순열' },
+        { id: 'w1c3i2', title: '2. 조합' },
+      ]},
+      { id: 'w1c4', title: 'Ⅳ. 행렬', items: [
+        { id: 'w1c4i1', title: '1. 행렬' },
+      ]},
+    ],
+  },
+  {
+    id: 'wb2',
+    title: '쎈 공통수학1',
+    chapters: [
+      { id: 'w2c1', title: 'Ⅰ. 다항식', items: [
+        { id: 'w2c1i1', title: '01. 다항식의 연산' },
+        { id: 'w2c1i2', title: '02. 나머지 정리와 인수분해' },
+      ]},
+      { id: 'w2c2', title: 'Ⅱ. 방정식', items: [
+        { id: 'w2c2i1', title: '03. 복소수' },
+        { id: 'w2c2i2', title: '04. 이차방정식' },
+        { id: 'w2c2i3', title: '05. 이차방정식과 이차함수' },
+        { id: 'w2c2i4', title: '06. 여러 가지 방정식' },
+      ]},
+      { id: 'w2c3', title: 'Ⅲ. 부등식', items: [
+        { id: 'w2c3i1', title: '07. 일차부등식' },
+        { id: 'w2c3i2', title: '08. 이차부등식' },
+      ]},
+      { id: 'w2c4', title: 'Ⅳ. 순열과 조합', items: [
+        { id: 'w2c4i1', title: '09. 순열과 조합' },
+      ]},
+      { id: 'w2c5', title: 'Ⅴ. 행렬', items: [
+        { id: 'w2c5i1', title: '10. 행렬과 그 연산' },
+      ]},
+    ],
+  },
+  {
+    id: 'wb3',
+    title: '개념쎈 중1-1',
+    chapters: [
+      { id: 'w3c1', title: 'Ⅰ. 수와 연산', items: [
+        { id: 'w3c1i1', title: '1. 소인수분해' },
+        { id: 'w3c1i2', title: '2. 정수와 유리수' },
+        { id: 'w3c1i3', title: '3. 유리수의 계산' },
+      ]},
+      { id: 'w3c2', title: 'Ⅱ. 방정식', items: [
+        { id: 'w3c2i1', title: '4. 문자와 식' },
+        { id: 'w3c2i2', title: '5. 일차방정식의 풀이' },
+        { id: 'w3c2i3', title: '6. 일차방정식의 활용' },
+      ]},
+      { id: 'w3c3', title: 'Ⅲ. 그래프와 비례', items: [
+        { id: 'w3c3i1', title: '7. 좌표평면과 그래프' },
+        { id: 'w3c3i2', title: '8. 정비례와 반비례' },
+      ]},
+    ],
+  },
+  {
+    id: 'wb4',
+    title: '개념쎈 중1-2',
+    chapters: [
+      { id: 'w4c1', title: 'Ⅰ. 기본 도형', items: [
+        { id: 'w4c1i1', title: '1. 기본 도형' },
+        { id: 'w4c1i2', title: '2. 위치 관계' },
+        { id: 'w4c1i3', title: '3. 작도와 합동' },
+      ]},
+      { id: 'w4c2', title: 'Ⅱ. 평면도형', items: [
+        { id: 'w4c2i1', title: '4. 다각형' },
+        { id: 'w4c2i2', title: '5. 원과 부채꼴' },
+      ]},
+      { id: 'w4c3', title: 'Ⅲ. 입체도형', items: [
+        { id: 'w4c3i1', title: '6. 다면체와 회전체' },
+        { id: 'w4c3i2', title: '7. 입체도형의 겉넓이와 부피' },
+      ]},
+      { id: 'w4c4', title: 'Ⅳ. 통계', items: [
+        { id: 'w4c4i1', title: '8. 자료의 정리와 해석' },
+      ]},
+    ],
+  },
+  {
+    id: 'wb5',
+    title: 'RPM 중1-1',
+    chapters: [
+      { id: 'w5c1', title: 'Ⅰ. 소인수분해', items: [
+        { id: 'w5c1i1', title: '1. 소인수분해' },
+        { id: 'w5c1i2', title: '2. 최대공약수와 최소공배수' },
+      ]},
+      { id: 'w5c2', title: 'Ⅱ. 정수와 유리수', items: [
+        { id: 'w5c2i1', title: '3. 정수와 유리수' },
+        { id: 'w5c2i2', title: '4. 정수와 유리수의 계산' },
+      ]},
+      { id: 'w5c3', title: 'Ⅲ. 문자와 식', items: [
+        { id: 'w5c3i1', title: '5. 문자의 사용과 식의 계산' },
+        { id: 'w5c3i2', title: '6. 일차방정식의 풀이' },
+        { id: 'w5c3i3', title: '7. 일차방정식의 활용' },
+      ]},
+      { id: 'w5c4', title: 'Ⅳ. 좌표평면과 그래프', items: [
+        { id: 'w5c4i1', title: '8. 좌표와 그래프' },
+        { id: 'w5c4i2', title: '9. 정비례와 반비례' },
+      ]},
+    ],
+  },
+];
+
+// ================================================================
+//  FIREBASE LISTENERS & SEED
+// ================================================================
+function setupListeners() {
+  const ready = { students: false, workbooks: false, progress: false, activities: false };
+
+  const checkReady = () => {
+    if (Object.values(ready).every(v => v)) {
+      _dataReady = true;
+    }
+    render();
+  };
+
+  db.collection('students').onSnapshot(snap => {
+    _students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    ready.students = true;
+    checkReady();
+  });
+
+  db.collection('workbooks').onSnapshot(snap => {
+    _workbooks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    ready.workbooks = true;
+    checkReady();
+  });
+
+  db.collection('progress').onSnapshot(snap => {
+    _progress = {};
+    snap.docs.forEach(d => { _progress[d.id] = d.data().status || {}; });
+    ready.progress = true;
+    checkReady();
+  });
+
+  db.collection('activities').onSnapshot(snap => {
+    _activities = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    ready.activities = true;
+    checkReady();
+  });
+}
+
+async function seedIfEmpty() {
+  const [studSnap, wbSnap] = await Promise.all([
+    db.collection('students').limit(1).get(),
+    db.collection('workbooks').limit(1).get(),
+  ]);
+  if (!studSnap.empty && !wbSnap.empty) return;
+
+  const batch = db.batch();
+  INITIAL_STUDENTS.forEach(s => batch.set(db.collection('students').doc(s.id), s));
+  INITIAL_WORKBOOKS.forEach(wb => batch.set(db.collection('workbooks').doc(wb.id), wb));
+  await batch.commit();
+}
 
 // ================================================================
 //  APP STATE
 // ================================================================
 let S = {
-  page: 'landing',      // landing | teacher-login | parent-login | teacher | parent
-  teacherTab: 'students', // students | workbooks | progress | photos
+  page: 'landing',
+  teacherTab: 'students',
   parentStudentId: null,
   parentTab: 'progress',
   expandedWorkbooks: new Set(),
@@ -83,149 +232,6 @@ function todayStr() {
 }
 
 function nav(page) { S.page = page; render(); }
-
-// ================================================================
-//  INIT DEMO DATA
-// ================================================================
-function initDemo() {
-  if (Store.get('initialized_v3')) return;
-  localStorage.removeItem(KEY + 'students');
-  localStorage.removeItem(KEY + 'workbooks');
-  localStorage.removeItem(KEY + 'progress');
-  localStorage.removeItem(KEY + 'activities');
-
-  const students = [
-    { id: 's1', name: '김범수', grade: '수내고1', workbookIds: [] },
-    { id: 's2', name: '김시영', grade: '죽전고1', workbookIds: ['wb1', 'wb2'] },
-    { id: 's3', name: '엄태현', grade: '대지중1', workbookIds: ['wb3', 'wb4', 'wb5'] },
-  ];
-
-  const workbooks = [
-    // ── 김시영 ─────────────────────────────────────
-    {
-      id: 'wb1',
-      title: 'RPM 공통수학1',
-      chapters: [
-        { id: 'w1c1', title: 'Ⅰ. 다항식', items: [
-          { id: 'w1c1i1', title: '1. 다항식의 연산' },
-          { id: 'w1c1i2', title: '2. 항등식과 나머지정리' },
-          { id: 'w1c1i3', title: '3. 인수분해' },
-        ]},
-        { id: 'w1c2', title: 'Ⅱ. 방정식과 부등식', items: [
-          { id: 'w1c2i1', title: '1. 복소수' },
-          { id: 'w1c2i2', title: '2. 이차방정식' },
-          { id: 'w1c2i3', title: '3. 이차방정식과 이차함수' },
-          { id: 'w1c2i4', title: '4. 여러 가지 방정식' },
-          { id: 'w1c2i5', title: '5. 여러 가지 부등식' },
-        ]},
-        { id: 'w1c3', title: 'Ⅲ. 경우의 수', items: [
-          { id: 'w1c3i1', title: '1. 경우의 수와 순열' },
-          { id: 'w1c3i2', title: '2. 조합' },
-        ]},
-        { id: 'w1c4', title: 'Ⅳ. 행렬', items: [
-          { id: 'w1c4i1', title: '1. 행렬' },
-        ]},
-      ],
-    },
-    {
-      id: 'wb2',
-      title: '쎈 공통수학1',
-      chapters: [
-        { id: 'w2c1', title: 'Ⅰ. 다항식', items: [
-          { id: 'w2c1i1', title: '01. 다항식의 연산' },
-          { id: 'w2c1i2', title: '02. 나머지 정리와 인수분해' },
-        ]},
-        { id: 'w2c2', title: 'Ⅱ. 방정식', items: [
-          { id: 'w2c2i1', title: '03. 복소수' },
-          { id: 'w2c2i2', title: '04. 이차방정식' },
-          { id: 'w2c2i3', title: '05. 이차방정식과 이차함수' },
-          { id: 'w2c2i4', title: '06. 여러 가지 방정식' },
-        ]},
-        { id: 'w2c3', title: 'Ⅲ. 부등식', items: [
-          { id: 'w2c3i1', title: '07. 일차부등식' },
-          { id: 'w2c3i2', title: '08. 이차부등식' },
-        ]},
-        { id: 'w2c4', title: 'Ⅳ. 순열과 조합', items: [
-          { id: 'w2c4i1', title: '09. 순열과 조합' },
-        ]},
-        { id: 'w2c5', title: 'Ⅴ. 행렬', items: [
-          { id: 'w2c5i1', title: '10. 행렬과 그 연산' },
-        ]},
-      ],
-    },
-    // ── 엄태현 ─────────────────────────────────────
-    {
-      id: 'wb3',
-      title: '개념쎈 중1-1',
-      chapters: [
-        { id: 'w3c1', title: 'Ⅰ. 수와 연산', items: [
-          { id: 'w3c1i1', title: '1. 소인수분해' },
-          { id: 'w3c1i2', title: '2. 정수와 유리수' },
-          { id: 'w3c1i3', title: '3. 유리수의 계산' },
-        ]},
-        { id: 'w3c2', title: 'Ⅱ. 방정식', items: [
-          { id: 'w3c2i1', title: '4. 문자와 식' },
-          { id: 'w3c2i2', title: '5. 일차방정식의 풀이' },
-          { id: 'w3c2i3', title: '6. 일차방정식의 활용' },
-        ]},
-        { id: 'w3c3', title: 'Ⅲ. 그래프와 비례', items: [
-          { id: 'w3c3i1', title: '7. 좌표평면과 그래프' },
-          { id: 'w3c3i2', title: '8. 정비례와 반비례' },
-        ]},
-      ],
-    },
-    {
-      id: 'wb4',
-      title: '개념쎈 중1-2',
-      chapters: [
-        { id: 'w4c1', title: 'Ⅰ. 기본 도형', items: [
-          { id: 'w4c1i1', title: '1. 기본 도형' },
-          { id: 'w4c1i2', title: '2. 위치 관계' },
-          { id: 'w4c1i3', title: '3. 작도와 합동' },
-        ]},
-        { id: 'w4c2', title: 'Ⅱ. 평면도형', items: [
-          { id: 'w4c2i1', title: '4. 다각형' },
-          { id: 'w4c2i2', title: '5. 원과 부채꼴' },
-        ]},
-        { id: 'w4c3', title: 'Ⅲ. 입체도형', items: [
-          { id: 'w4c3i1', title: '6. 다면체와 회전체' },
-          { id: 'w4c3i2', title: '7. 입체도형의 겉넓이와 부피' },
-        ]},
-        { id: 'w4c4', title: 'Ⅳ. 통계', items: [
-          { id: 'w4c4i1', title: '8. 자료의 정리와 해석' },
-        ]},
-      ],
-    },
-    {
-      id: 'wb5',
-      title: 'RPM 중1-1',
-      chapters: [
-        { id: 'w5c1', title: 'Ⅰ. 소인수분해', items: [
-          { id: 'w5c1i1', title: '1. 소인수분해' },
-          { id: 'w5c1i2', title: '2. 최대공약수와 최소공배수' },
-        ]},
-        { id: 'w5c2', title: 'Ⅱ. 정수와 유리수', items: [
-          { id: 'w5c2i1', title: '3. 정수와 유리수' },
-          { id: 'w5c2i2', title: '4. 정수와 유리수의 계산' },
-        ]},
-        { id: 'w5c3', title: 'Ⅲ. 문자와 식', items: [
-          { id: 'w5c3i1', title: '5. 문자의 사용과 식의 계산' },
-          { id: 'w5c3i2', title: '6. 일차방정식의 풀이' },
-          { id: 'w5c3i3', title: '7. 일차방정식의 활용' },
-        ]},
-        { id: 'w5c4', title: 'Ⅳ. 좌표평면과 그래프', items: [
-          { id: 'w5c4i1', title: '8. 좌표와 그래프' },
-          { id: 'w5c4i2', title: '9. 정비례와 반비례' },
-        ]},
-      ],
-    },
-  ];
-
-  Store.saveStudents(students);
-  Store.saveWorkbooks(workbooks);
-  Store.saveProgress({});
-  Store.set('initialized_v3', true);
-}
 
 // ================================================================
 //  UTILITY
@@ -259,6 +265,15 @@ function compressImage(file) {
     };
     reader.readAsDataURL(file);
   });
+}
+
+function dataUrlToBlob(dataUrl) {
+  const [header, data] = dataUrl.split(',');
+  const mime = header.match(/:(.*?);/)[1];
+  const binary = atob(data);
+  const arr = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
+  return new Blob([arr], { type: mime });
 }
 
 function formatDate(str) {
@@ -308,10 +323,24 @@ window.closeModal = closeModal;
 // ================================================================
 //  RENDER
 // ================================================================
+function renderLoading() {
+  return `
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px">
+    <div style="font-size:3rem">📐</div>
+    <div style="font-size:1.1rem;font-weight:600;color:var(--text)">학습 관리 시스템</div>
+    <div style="color:var(--text-sub);font-size:0.9rem">데이터를 불러오는 중...</div>
+    <div class="spinner"></div>
+  </div>`;
+}
+
 function render() {
   const app = document.getElementById('app');
+  if (!_dataReady) {
+    app.innerHTML = renderLoading();
+    return;
+  }
   switch (S.page) {
-    case 'landing':      app.innerHTML = renderLanding(); break;
+    case 'landing':       app.innerHTML = renderLanding(); break;
     case 'teacher-login': app.innerHTML = renderTeacherLogin(); break;
     case 'parent-login':  app.innerHTML = renderParentLogin(); break;
     case 'teacher':       app.innerHTML = renderTeacher(); break;
@@ -537,18 +566,15 @@ window.openAddStudentModal = function() {
   `);
 };
 
-window.saveNewStudent = function() {
+window.saveNewStudent = async function() {
   const name = document.getElementById('m-name')?.value.trim();
   const grade = document.getElementById('m-grade')?.value.trim();
   if (!name) { showToast('이름을 입력해 주세요.'); return; }
   const wbIds = [...document.querySelectorAll('.m-wb:checked')].map(el => el.value);
   const student = { id: uid(), name, grade, workbookIds: wbIds };
-  const arr = Store.students();
-  arr.push(student);
-  Store.saveStudents(arr);
   closeModal();
+  await db.collection('students').doc(student.id).set(student);
   showToast(`${name} 학생이 추가되었습니다.`);
-  render();
 };
 
 window.openEditStudentModal = function(sid) {
@@ -583,29 +609,32 @@ window.openEditStudentModal = function(sid) {
   `);
 };
 
-window.saveEditStudent = function(sid) {
+window.saveEditStudent = async function(sid) {
   const name = document.getElementById('m-name')?.value.trim();
   const grade = document.getElementById('m-grade')?.value.trim();
   if (!name) { showToast('이름을 입력해 주세요.'); return; }
   const wbIds = [...document.querySelectorAll('.m-wb:checked')].map(el => el.value);
-  const arr = Store.students().map(s => s.id === sid ? {...s, name, grade, workbookIds: wbIds} : s);
-  Store.saveStudents(arr);
+  const existing = _students.find(s => s.id === sid);
+  if (!existing) return;
   closeModal();
+  await db.collection('students').doc(sid).set({ ...existing, name, grade, workbookIds: wbIds });
   showToast('수정되었습니다.');
-  render();
 };
 
-window.deleteStudent = function(sid) {
-  const s = Store.students().find(st => st.id === sid);
+window.deleteStudent = async function(sid) {
+  const s = _students.find(st => st.id === sid);
   if (!s) return;
   if (!confirm(`'${s.name}' 학생을 삭제할까요? 모든 진도 데이터도 함께 삭제됩니다.`)) return;
-  Store.saveStudents(Store.students().filter(st => st.id !== sid));
-  const prog = Store.progress();
-  Object.keys(prog).forEach(k => { if (k.startsWith(sid + '__')) delete prog[k]; });
-  Store.saveProgress(prog);
-  Store.saveActivities(Store.activities().filter(a => a.studentId !== sid));
+  const batch = db.batch();
+  batch.delete(db.collection('students').doc(sid));
+  Object.keys(_progress).forEach(key => {
+    if (key.startsWith(sid + '__')) batch.delete(db.collection('progress').doc(key));
+  });
+  _activities.filter(a => a.studentId === sid).forEach(a => {
+    batch.delete(db.collection('activities').doc(a.id));
+  });
+  await batch.commit();
   showToast('삭제되었습니다.');
-  render();
 };
 
 // ---------- Workbooks Tab ----------
@@ -717,7 +746,7 @@ window.addItemEditor = function(listId) {
   list.appendChild(row);
 };
 
-window.saveNewWorkbook = function() {
+window.saveNewWorkbook = async function() {
   const title = document.getElementById('wb-title')?.value.trim();
   if (!title) { showToast('문제집 제목을 입력해 주세요.'); return; }
 
@@ -735,12 +764,9 @@ window.saveNewWorkbook = function() {
 
   if (chapters.length === 0) { showToast('최소 1개의 챕터와 항목을 추가해 주세요.'); return; }
   const wb = { id: uid(), title, chapters };
-  const arr = Store.workbooks();
-  arr.push(wb);
-  Store.saveWorkbooks(arr);
   closeModal();
+  await db.collection('workbooks').doc(wb.id).set(wb);
   showToast(`'${title}' 문제집이 추가되었습니다.`);
-  render();
 };
 
 window.openEditWorkbookModal = function(wid) {
@@ -786,7 +812,7 @@ window.openEditWorkbookModal = function(wid) {
   `);
 };
 
-window.saveEditWorkbook = function(wid) {
+window.saveEditWorkbook = async function(wid) {
   const title = document.getElementById('wb-title')?.value.trim();
   if (!title) { showToast('문제집 제목을 입력해 주세요.'); return; }
   const chapters = [];
@@ -801,22 +827,26 @@ window.saveEditWorkbook = function(wid) {
     if (items.length > 0) chapters.push({ id: uid(), title: chTitle, items });
   });
   if (chapters.length === 0) { showToast('최소 1개의 챕터와 항목을 추가해 주세요.'); return; }
-  const arr = Store.workbooks().map(w => w.id === wid ? { ...w, title, chapters } : w);
-  Store.saveWorkbooks(arr);
   closeModal();
+  await db.collection('workbooks').doc(wid).set({ id: wid, title, chapters });
   showToast('문제집이 수정되었습니다.');
-  render();
 };
 
-window.deleteWorkbook = function(wid) {
-  const wb = Store.workbooks().find(w => w.id === wid);
+window.deleteWorkbook = async function(wid) {
+  const wb = _workbooks.find(w => w.id === wid);
   if (!wb) return;
   if (!confirm(`'${wb.title}'을 삭제할까요?`)) return;
-  Store.saveWorkbooks(Store.workbooks().filter(w => w.id !== wid));
-  const students = Store.students().map(s => ({...s, workbookIds: (s.workbookIds||[]).filter(id => id !== wid)}));
-  Store.saveStudents(students);
+  const batch = db.batch();
+  batch.delete(db.collection('workbooks').doc(wid));
+  _students.forEach(s => {
+    if ((s.workbookIds || []).includes(wid)) {
+      batch.set(db.collection('students').doc(s.id), {
+        ...s, workbookIds: s.workbookIds.filter(id => id !== wid)
+      });
+    }
+  });
+  await batch.commit();
   showToast('삭제되었습니다.');
-  render();
 };
 
 // ---------- Progress Tab ----------
@@ -918,8 +948,16 @@ function renderProgressEditor(sid, wb) {
 window.selectProgStudent = function(sid) { S.teacherProgStudent = sid; S.teacherProgWorkbook = null; render(); };
 window.selectProgWorkbook = function(wid) { S.teacherProgWorkbook = wid; render(); };
 window.setItemStatus = function(sid, wid, itemId, status) {
-  Store.setItemStatus(sid, wid, itemId, status);
+  // Optimistic update
+  const key = `${sid}__${wid}`;
+  if (!_progress[key]) _progress[key] = {};
+  _progress[key][itemId] = status;
   render();
+  // Write to Firestore
+  db.collection('progress').doc(key).set(
+    { studentId: sid, workbookId: wid, status: { [itemId]: status } },
+    { merge: true }
+  );
 };
 
 // ---------- Photos Tab ----------
@@ -929,7 +967,7 @@ function renderTeacherPhotos() {
   const date = S.teacherPhotoDate || todayStr();
   const selectedStudent = students.find(s => s.id === sid);
   const activity = sid ? Store.getDateActivities(sid, date) : null;
-  const photos = activity ? activity.photos : [];
+  const photos = activity ? (activity.photoUrls || []) : [];
 
   return `
   <div>
@@ -997,25 +1035,40 @@ window.setPhotoDate = function(date) { S.teacherPhotoDate = date; render(); };
 window.handlePhotoUpload = async function(event, sid, date) {
   const files = [...event.target.files];
   if (files.length === 0) return;
-  showToast('사진을 처리 중입니다...');
+  showToast('사진을 업로드하는 중입니다...');
+  let uploaded = 0;
   for (const file of files) {
     try {
       const dataUrl = await compressImage(file);
-      const ok = Store.addPhoto(sid, date, dataUrl);
-      if (!ok) break;
+      const blob = dataUrlToBlob(dataUrl);
+      const path = `photos/${sid}/${date}/${Date.now()}_${uid()}.jpg`;
+      const ref = storage.ref(path);
+      await ref.put(blob);
+      const url = await ref.getDownloadURL();
+      await db.collection('activities').doc(`${sid}__${date}`).set(
+        { studentId: sid, date, photoUrls: firebase.firestore.FieldValue.arrayUnion(url) },
+        { merge: true }
+      );
+      uploaded++;
     } catch(e) {
+      console.error(e);
       showToast('사진 처리 중 오류가 발생했습니다.');
     }
   }
-  showToast(`${files.length}장의 사진이 업로드되었습니다.`);
-  render();
+  if (uploaded > 0) showToast(`${uploaded}장의 사진이 업로드되었습니다.`);
 };
 
-window.deletePhoto = function(sid, date, idx) {
+window.deletePhoto = async function(sid, date, idx) {
   if (!confirm('이 사진을 삭제할까요?')) return;
-  Store.removePhoto(sid, date, idx);
+  const activity = Store.getDateActivities(sid, date);
+  if (!activity) return;
+  const url = (activity.photoUrls || [])[idx];
+  if (!url) return;
+  await db.collection('activities').doc(`${sid}__${date}`).update({
+    photoUrls: firebase.firestore.FieldValue.arrayRemove(url)
+  });
+  try { await storage.refFromURL(url).delete(); } catch(e) { console.warn('Storage delete failed:', e); }
   showToast('삭제되었습니다.');
-  render();
 };
 
 // ================================================================
@@ -1061,7 +1114,6 @@ function lbRender() {
       <div class="lb-thumb ${i === idx ? 'lb-thumb-active' : ''}" onclick="lbGoTo(${i})">
         <img src="${p}" alt="">
       </div>`).join('');
-    // scroll active thumb into view
     requestAnimationFrame(() => {
       thumbs.querySelector('.lb-thumb-active')?.scrollIntoView({ inline: 'center', behavior: 'smooth' });
     });
@@ -1106,7 +1158,7 @@ window.lbToggleZoom = function(img) {
 window.openLightbox = function(sid, date, idx) {
   const activity = Store.getDateActivities(sid, date);
   if (!activity) return;
-  LB.photos = activity.photos;
+  LB.photos = activity.photoUrls || [];
   LB.idx = idx;
   buildLightbox();
   lbRender();
@@ -1265,7 +1317,6 @@ function renderParentCalendar(student) {
   const monthNames = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
 
   const monthPrefix = `${year}-${String(month+1).padStart(2,'0')}-`;
-  const activeDaysThisMonth = Object.keys(counts).filter(d => d.startsWith(monthPrefix)).sort();
 
   let cells = [];
   for (let i = 0; i < firstDay; i++) cells.push(null);
@@ -1275,9 +1326,8 @@ function renderParentCalendar(student) {
   }
 
   const selectedActivity = S.selectedDate ? Store.getDateActivities(student.id, S.selectedDate) : null;
-  const selectedPhotos = selectedActivity ? selectedActivity.photos : [];
+  const selectedPhotos = selectedActivity ? (selectedActivity.photoUrls || []) : [];
 
-  // photo grid layout class
   const gridClass = selectedPhotos.length === 1 ? 'single'
     : selectedPhotos.length === 3 ? 'triple' : '';
 
@@ -1401,8 +1451,12 @@ window.openLightboxParent = function(idx) {
 // ================================================================
 //  INIT
 // ================================================================
-initDemo();
-render();
+render(); // show loading screen immediately
 
-// Close modal on overlay click
+async function init() {
+  await seedIfEmpty();
+  setupListeners();
+}
+init();
+
 document.getElementById('modal-overlay').addEventListener('click', closeModal);

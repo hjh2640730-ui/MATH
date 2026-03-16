@@ -13,6 +13,22 @@
   <div id="modal-overlay" class="modal-overlay hidden"></div>
   <div id="modal-root"></div>
   <div id="lightbox" class="lb-overlay hidden"></div>
-  <script defer src="/main.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDUcvTf8KnCXFidZb8CtF_XO989MZrN__I",
+      authDomain: "math-91276.firebaseapp.com",
+      projectId: "math-91276",
+      storageBucket: "math-91276.firebasestorage.app",
+      messagingSenderId: "28447479628",
+      appId: "1:28447479628:web:ce3c9e94c6bdeafde661e9"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+  </script>
+  <script src="/main.js"></script>
 </body>
 </html>

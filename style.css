@@ -231,6 +231,8 @@ body {
   cursor: pointer;
   transition: all 0.15s;
   text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .btn-primary {
@@ -460,6 +462,8 @@ body {
   font-weight: 500;
   position: relative;
   gap: 2px;
+  min-height: 40px; /* 터치 영역 확보 */
+  -webkit-tap-highlight-color: transparent;
 }
 .cal-day:hover:not(.empty):not(.other-month) { background: var(--primary-light); color: var(--primary); }
 .cal-day.empty, .cal-day.other-month { cursor: default; color: #D1D5DB; }
@@ -791,11 +795,83 @@ body {
   to { transform: translateX(-50%) translateY(0); opacity: 1; }
 }
 
-/* Responsive */
+/* ===================== MOBILE (≤600px) ===================== */
 @media (max-width: 600px) {
-  .landing-title { font-size: 1.5rem; }
-  .content { padding: 16px 12px; }
-  .modal { padding: 20px; }
+  /* 기본 */
+  .landing-title { font-size: 1.4rem; }
+  .landing-subtitle { font-size: 0.88rem; }
+  .landing-card { padding: 28px 20px; min-width: 140px; }
+  .landing-card .icon { font-size: 2.4rem; }
+
+  .content { padding: 14px 10px; }
+  .modal { padding: 20px 16px; width: 95%; }
   .login-card { padding: 28px 20px; }
-  .photo-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+
+  /* 헤더 */
+  .header { padding: 0 14px; height: 54px; }
+  .header-title { font-size: 0.92rem; }
+  .btn-back { padding: 7px 10px; font-size: 0.78rem; }
+
+  /* 탭 */
+  .tab-btn { padding: 12px 14px; font-size: 0.82rem; gap: 4px; }
+
+  /* 학생 카드 */
+  .student-item { flex-direction: column; align-items: flex-start; gap: 10px; padding: 14px 16px; }
+  .student-actions { width: 100%; justify-content: flex-end; }
+  .student-name { font-size: 1rem; }
+
+  /* 진도 관리 학생 선택 */
+  .progress-student-select { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .progress-student-card { padding: 12px 8px; }
+  .progress-student-card .name { font-size: 0.9rem; }
+
+  /* 진도 항목 상태 버튼 - 모바일에서 수직 배치 */
+  .status-select-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  .status-btn-group {
+    margin-left: 0;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .status-btn {
+    text-align: center;
+    padding: 6px 4px;
+    font-size: 0.72rem;
+  }
+
+  /* 달력 */
+  .calendar-wrapper { padding: 14px 10px; }
+  .cal-day { font-size: 0.85rem; border-radius: 8px; }
+  .calendar-title { font-size: 1rem; }
+  .calendar-grid { gap: 3px; }
+
+  /* 문제집 TOC */
+  .workbook-header { padding: 14px 14px; }
+  .workbook-toc { padding: 10px 14px 14px; }
+  .toc-item { padding: 7px 8px; }
+  .toc-item-title { font-size: 0.85rem; }
+  .toc-item-badge { font-size: 0.68rem; padding: 2px 6px; white-space: nowrap; }
+
+  /* 사진 그리드 */
+  .photo-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .photo-upload-area { padding: 24px 16px; }
+
+  /* 섹션 헤더 */
+  .section-header { flex-wrap: wrap; gap: 8px; }
+
+  /* 문제집 선택 버튼 (진도관리) */
+  .teacher-wb-btns { flex-wrap: wrap; }
+}
+
+/* ===================== SMALL MOBILE (≤380px) ===================== */
+@media (max-width: 380px) {
+  .progress-student-select { grid-template-columns: repeat(2, 1fr); }
+  .tab-btn { padding: 11px 10px; font-size: 0.78rem; }
+  .toc-item-badge { display: none; }
 }

@@ -1318,12 +1318,6 @@ function renderParentCalendar(student) {
       </div>
     </div>
 
-    <div class="cal-legend">
-      <div class="cal-legend-item"><div class="cal-legend-box"></div>수업한 날</div>
-      <div class="cal-legend-item"><div class="cal-legend-today"></div>오늘</div>
-      <div class="cal-legend-item"><span class="cal-legend-badge">2</span>사진 수</div>
-    </div>
-
     ${S.selectedDate ? `
       <div class="cal-photo-panel ${selectedPhotos.length > 0 ? 'has-photos' : ''}" id="cal-photo-panel">
         <div class="cal-panel-header">

@@ -1018,24 +1018,138 @@ window.deletePhoto = function(sid, date, idx) {
   render();
 };
 
+// ================================================================
+//  FULLSCREEN LIGHTBOX
+// ================================================================
+const LB = { photos: [], idx: 0 };
+
+function buildLightbox() {
+  const el = document.getElementById('lightbox');
+  el.innerHTML = `
+    <button class="lb-close" onclick="closeLightbox()">✕</button>
+    <div class="lb-counter" id="lb-counter"></div>
+    <div class="lb-stage">
+      <button class="lb-arrow lb-prev" id="lb-prev" onclick="lbNav(-1)">‹</button>
+      <div class="lb-img-wrap" id="lb-img-wrap">
+        <img id="lb-img" src="" alt="" class="lb-img" ondblclick="lbToggleZoom(this)">
+      </div>
+      <button class="lb-arrow lb-next" id="lb-next" onclick="lbNav(1)">›</button>
+    </div>
+    <div class="lb-thumbs" id="lb-thumbs"></div>
+  `;
+}
+
+function lbRender() {
+  const { photos, idx } = LB;
+  const img = document.getElementById('lb-img');
+  const counter = document.getElementById('lb-counter');
+  const prev = document.getElementById('lb-prev');
+  const next = document.getElementById('lb-next');
+  const thumbs = document.getElementById('lb-thumbs');
+
+  img.src = photos[idx];
+  img.style.transform = 'scale(1)';
+  counter.textContent = `${idx + 1} / ${photos.length}`;
+  prev.style.opacity = idx > 0 ? '1' : '0.25';
+  prev.style.pointerEvents = idx > 0 ? 'auto' : 'none';
+  next.style.opacity = idx < photos.length - 1 ? '1' : '0.25';
+  next.style.pointerEvents = idx < photos.length - 1 ? 'auto' : 'none';
+
+  if (photos.length > 1) {
+    thumbs.style.display = 'flex';
+    thumbs.innerHTML = photos.map((p, i) => `
+      <div class="lb-thumb ${i === idx ? 'lb-thumb-active' : ''}" onclick="lbGoTo(${i})">
+        <img src="${p}" alt="">
+      </div>`).join('');
+    // scroll active thumb into view
+    requestAnimationFrame(() => {
+      thumbs.querySelector('.lb-thumb-active')?.scrollIntoView({ inline: 'center', behavior: 'smooth' });
+    });
+  } else {
+    thumbs.style.display = 'none';
+  }
+}
+
+window.lbNav = function(delta) {
+  const newIdx = LB.idx + delta;
+  if (newIdx < 0 || newIdx >= LB.photos.length) return;
+  const wrap = document.getElementById('lb-img-wrap');
+  wrap.classList.add(delta > 0 ? 'lb-slide-left' : 'lb-slide-right');
+  setTimeout(() => {
+    LB.idx = newIdx;
+    wrap.classList.remove('lb-slide-left', 'lb-slide-right');
+    wrap.classList.add('lb-slide-in');
+    lbRender();
+    setTimeout(() => wrap.classList.remove('lb-slide-in'), 200);
+  }, 160);
+};
+
+window.lbGoTo = function(idx) {
+  if (idx === LB.idx) return;
+  const delta = idx > LB.idx ? 1 : -1;
+  LB.idx = idx;
+  const wrap = document.getElementById('lb-img-wrap');
+  wrap.classList.add(delta > 0 ? 'lb-slide-left' : 'lb-slide-right');
+  setTimeout(() => {
+    wrap.classList.remove('lb-slide-left', 'lb-slide-right');
+    wrap.classList.add('lb-slide-in');
+    lbRender();
+    setTimeout(() => wrap.classList.remove('lb-slide-in'), 200);
+  }, 160);
+};
+
+window.lbToggleZoom = function(img) {
+  img.style.transform = img.style.transform === 'scale(2)' ? 'scale(1)' : 'scale(2)';
+  img.style.cursor = img.style.transform === 'scale(2)' ? 'zoom-out' : 'zoom-in';
+};
+
 window.openLightbox = function(sid, date, idx) {
   const activity = Store.getDateActivities(sid, date);
   if (!activity) return;
-  const photos = activity.photos;
-  openModal(`
-    <div class="lightbox-modal" style="background:rgba(0,0,0,0.9);border-radius:12px;padding:12px;text-align:center">
-      <img src="${photos[idx]}" class="lightbox-img" alt="학습 사진">
-      <div style="color:white;margin-top:12px;font-size:0.85rem">${idx+1} / ${photos.length}</div>
-      ${photos.length > 1 ? `
-        <div style="display:flex;justify-content:center;gap:12px;margin-top:12px">
-          ${idx > 0 ? `<button class="btn btn-ghost" onclick="closeModal();openLightbox('${sid}','${date}',${idx-1})" style="color:white;border-color:white">← 이전</button>` : ''}
-          ${idx < photos.length-1 ? `<button class="btn btn-ghost" onclick="closeModal();openLightbox('${sid}','${date}',${idx+1})" style="color:white;border-color:white">다음 →</button>` : ''}
-        </div>
-      ` : ''}
-      <div style="margin-top:12px"><button class="btn btn-ghost" onclick="closeModal()" style="color:white;border-color:white">닫기</button></div>
-    </div>
-  `);
+  LB.photos = activity.photos;
+  LB.idx = idx;
+  buildLightbox();
+  lbRender();
+  const el = document.getElementById('lightbox');
+  el.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  setupLbSwipe();
+  setupLbKeyboard();
 };
+
+window.closeLightbox = function() {
+  document.getElementById('lightbox').classList.add('hidden');
+  document.body.style.overflow = '';
+};
+
+function setupLbSwipe() {
+  const wrap = document.getElementById('lb-img-wrap');
+  let sx = 0, sy = 0;
+  wrap.addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+  wrap.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - sx;
+    const dy = e.changedTouches[0].clientY - sy;
+    if (Math.abs(dx) > 44 && Math.abs(dx) > Math.abs(dy)) lbNav(dx < 0 ? 1 : -1);
+  }, { passive: true });
+}
+
+function setupLbKeyboard() {
+  const handler = (e) => {
+    if (document.getElementById('lightbox').classList.contains('hidden')) {
+      document.removeEventListener('keydown', handler);
+      return;
+    }
+    if (e.key === 'ArrowRight') lbNav(1);
+    if (e.key === 'ArrowLeft')  lbNav(-1);
+    if (e.key === 'Escape')     closeLightbox();
+  };
+  document.removeEventListener('keydown', handler);
+  document.addEventListener('keydown', handler);
+}
+
+document.getElementById('lightbox').addEventListener('click', e => {
+  if (e.target === document.getElementById('lightbox')) closeLightbox();
+});
 
 // ================================================================
 //  PARENT VIEW
@@ -1181,12 +1295,6 @@ function renderParentCalendar(student) {
         <button class="cal-nav-btn" onclick="nextMonth()">›</button>
       </div>
 
-      <div class="cal-summary-bar">
-        ${activeDaysThisMonth.length > 0
-          ? `📚 이번 달 <strong>${activeDaysThisMonth.length}번</strong> 수업했어요`
-          : `이번 달 수업 기록이 없어요`}
-      </div>
-
       <div class="cal-grid">
         ${['일','월','화','수','목','금','토'].map((h,i) =>
           `<div class="cal-day-hdr ${i===0?'sun':i===6?'sat':''}">${h}</div>`
@@ -1217,11 +1325,11 @@ function renderParentCalendar(student) {
     </div>
 
     ${S.selectedDate ? `
-      <div class="cal-photo-panel ${selectedPhotos.length > 0 ? 'has-photos' : ''}">
+      <div class="cal-photo-panel ${selectedPhotos.length > 0 ? 'has-photos' : ''}" id="cal-photo-panel">
         <div class="cal-panel-header">
           <div>
             <div class="cal-panel-date">${formatDate(S.selectedDate)} <span class="cal-panel-dow">${getDayOfWeek(S.selectedDate)}요일</span></div>
-            <div class="cal-panel-meta">${selectedPhotos.length > 0 ? `📷 사진 ${selectedPhotos.length}장` : '학습 사진이 없습니다'}</div>
+            <div class="cal-panel-meta">${selectedPhotos.length > 0 ? `📷 사진 ${selectedPhotos.length}장` : '학습 사진이 없어요'}</div>
           </div>
           <button class="cal-close-btn" onclick="selectDate('${S.selectedDate}')">✕</button>
         </div>
@@ -1230,7 +1338,7 @@ function renderParentCalendar(student) {
             ${selectedPhotos.map((p, i) => `
               <div class="cal-photo-thumb" onclick="openLightboxParent(${i})">
                 <img src="${p}" alt="사진 ${i+1}" loading="lazy">
-                <div class="cal-photo-overlay">🔍</div>
+                <div class="cal-photo-overlay"><span class="lb-zoom-icon">⊕</span></div>
               </div>
             `).join('')}
           </div>
@@ -1241,28 +1349,11 @@ function renderParentCalendar(student) {
           </div>
         `}
       </div>
-    ` : activeDaysThisMonth.length > 0 ? `
-      <div class="cal-hint-panel">
-        <div class="cal-hint-title">📆 이번 달 수업 날짜</div>
-        <div class="cal-activity-list">
-          ${activeDaysThisMonth.map(date => {
-            const [,, d] = date.split('-');
-            const dow = getDayOfWeek(date);
-            const cnt = counts[date];
-            return `
-            <div class="cal-activity-row" onclick="selectDate('${date}')">
-              <div class="cal-activity-date">${parseInt(d)}일 <span class="cal-activity-dow">${dow}요일</span></div>
-              <div class="cal-activity-meta">📷 ${cnt}장</div>
-              <div class="cal-activity-arrow">›</div>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>
     ` : `
       <div class="cal-hint-panel">
         <div class="cal-empty-hint">
-          <div class="hint-icon">📅</div>
-          <div class="hint-main">날짜를 탭하면 학습 내용을 볼 수 있어요</div>
+          <div class="hint-icon">👆</div>
+          <div class="hint-main">날짜를 탭하면 학습 사진을 볼 수 있어요</div>
           <div class="hint-sub">숫자 배지가 있는 날은 사진이 올라와 있어요</div>
         </div>
       </div>
@@ -1283,9 +1374,11 @@ window.nextMonth = function() {
 window.selectDate = function(date) {
   S.selectedDate = S.selectedDate === date ? null : date;
   render();
-  if (S.selectedDate) setTimeout(() => {
-    document.querySelector('.cal-photo-panel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, 50);
+  if (S.selectedDate) {
+    requestAnimationFrame(() => {
+      document.getElementById('cal-photo-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
 };
 
 function setupCalendarSwipe() {

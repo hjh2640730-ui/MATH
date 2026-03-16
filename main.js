@@ -29,6 +29,11 @@ const Store = {
   saveActivities: (v) => Store.set('activities', v),
   getDateActivities: (sid, date) => Store.activities().find(a => a.studentId === sid && a.date === date),
   getActiveDates: (sid) => Store.activities().filter(a => a.studentId === sid).map(a => a.date),
+  getActivityCounts: (sid) => {
+    const result = {};
+    Store.activities().filter(a => a.studentId === sid).forEach(a => { result[a.date] = a.photos.length; });
+    return result;
+  },
   upsertActivity: (sid, date, photos, note) => {
     const all = Store.activities();
     const idx = all.findIndex(a => a.studentId === sid && a.date === date);
@@ -1138,83 +1143,128 @@ window.toggleParentWb = function(wid) {
 // ---------- Parent Calendar ----------
 function renderParentCalendar(student) {
   const { year, month } = S.cal;
-  const activeDates = new Set(Store.getActiveDates(student.id));
+  const counts = Store.getActivityCounts(student.id);
   const today = todayStr();
 
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const monthNames = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-  const dayHeaders = ['일','월','화','수','목','금','토'];
+
+  const monthPrefix = `${year}-${String(month+1).padStart(2,'0')}-`;
+  const activeDaysThisMonth = Object.keys(counts).filter(d => d.startsWith(monthPrefix)).sort();
 
   let cells = [];
-  for (let i = 0; i < firstDay; i++) cells.push({ empty: true });
+  for (let i = 0; i < firstDay; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    cells.push({ d, dateStr, hasActivity: activeDates.has(dateStr), isToday: dateStr === today });
+    const dateStr = `${monthPrefix}${String(d).padStart(2,'0')}`;
+    cells.push({ d, dateStr, count: counts[dateStr] || 0, isToday: dateStr === today });
   }
 
   const selectedActivity = S.selectedDate ? Store.getDateActivities(student.id, S.selectedDate) : null;
   const selectedPhotos = selectedActivity ? selectedActivity.photos : [];
 
+  // photo grid layout class
+  const gridClass = selectedPhotos.length === 1 ? 'single'
+    : selectedPhotos.length === 3 ? 'triple' : '';
+
+  setTimeout(setupCalendarSwipe, 0);
+
   return `
-  <div>
-    <div class="calendar-wrapper mb-16">
-      <div class="calendar-nav">
-        <button class="calendar-arrow" onclick="prevMonth()">◀</button>
-        <div class="calendar-title">${year}년 ${monthNames[month]}</div>
-        <button class="calendar-arrow" onclick="nextMonth()">▶</button>
+  <div id="calendar-root">
+    <div class="cal-card" id="cal-swipe-area">
+      <div class="cal-header">
+        <button class="cal-nav-btn" onclick="prevMonth()">‹</button>
+        <div class="cal-header-center">
+          <div class="cal-month-name">${monthNames[month]}</div>
+          <div class="cal-year-label">${year}년</div>
+        </div>
+        <button class="cal-nav-btn" onclick="nextMonth()">›</button>
       </div>
-      <div class="calendar-grid">
-        ${dayHeaders.map((h,i) => `<div class="cal-day-header" style="${i===0?'color:#EF4444':i===6?'color:#3B82F6':''}">${h}</div>`).join('')}
+
+      <div class="cal-summary-bar">
+        ${activeDaysThisMonth.length > 0
+          ? `📚 이번 달 <strong>${activeDaysThisMonth.length}번</strong> 수업했어요`
+          : `이번 달 수업 기록이 없어요`}
+      </div>
+
+      <div class="cal-grid">
+        ${['일','월','화','수','목','금','토'].map((h,i) =>
+          `<div class="cal-day-hdr ${i===0?'sun':i===6?'sat':''}">${h}</div>`
+        ).join('')}
         ${cells.map(cell => {
-          if (cell.empty) return `<div class="cal-day empty"></div>`;
+          if (!cell) return `<div></div>`;
           const isSelected = S.selectedDate === cell.dateStr;
           const dow = new Date(cell.dateStr).getDay();
-          const cls = [
-            'cal-day',
-            cell.isToday ? 'today' : '',
-            cell.hasActivity ? 'has-activity' : '',
-            isSelected ? 'selected' : '',
-            dow === 0 ? 'sunday' : dow === 6 ? 'saturday' : '',
-          ].filter(Boolean).join(' ');
+          const hasActivity = cell.count > 0;
+          let cls = 'cal-cell';
+          if (isSelected)       cls += ' cal-selected';
+          else if (hasActivity) cls += ' cal-has-activity';
+          if (!isSelected && dow === 0) cls += ' cal-sun';
+          if (!isSelected && dow === 6) cls += ' cal-sat';
           return `
           <div class="${cls}" onclick="selectDate('${cell.dateStr}')">
-            ${cell.d}
-            ${cell.hasActivity ? `<div class="activity-dot"></div>` : ''}
+            <span class="cal-num ${cell.isToday && !isSelected ? 'cal-today-num' : ''}">${cell.d}</span>
+            ${hasActivity ? `<span class="cal-photo-badge ${isSelected ? 'cal-photo-badge-inv' : ''}">${cell.count}</span>` : ''}
           </div>`;
         }).join('')}
       </div>
     </div>
 
+    <div class="cal-legend">
+      <div class="cal-legend-item"><div class="cal-legend-box"></div>수업한 날</div>
+      <div class="cal-legend-item"><div class="cal-legend-today"></div>오늘</div>
+      <div class="cal-legend-item"><span class="cal-legend-badge">2</span>사진 수</div>
+    </div>
+
     ${S.selectedDate ? `
-      <div>
-        <div class="photo-date-banner">
-          <span style="font-size:1.5rem">📅</span>
+      <div class="cal-photo-panel ${selectedPhotos.length > 0 ? 'has-photos' : ''}">
+        <div class="cal-panel-header">
           <div>
-            <div class="date-label">${formatDate(S.selectedDate)} (${getDayOfWeek(S.selectedDate)})</div>
-            <div class="date-sub">${selectedPhotos.length > 0 ? `학습 사진 ${selectedPhotos.length}장` : '학습 기록이 없습니다'}</div>
+            <div class="cal-panel-date">${formatDate(S.selectedDate)} <span class="cal-panel-dow">${getDayOfWeek(S.selectedDate)}요일</span></div>
+            <div class="cal-panel-meta">${selectedPhotos.length > 0 ? `📷 사진 ${selectedPhotos.length}장` : '학습 사진이 없습니다'}</div>
           </div>
+          <button class="cal-close-btn" onclick="selectDate('${S.selectedDate}')">✕</button>
         </div>
         ${selectedPhotos.length > 0 ? `
-          <div class="photo-grid">
+          <div class="cal-photo-grid ${gridClass}">
             ${selectedPhotos.map((p, i) => `
-              <div class="photo-item" onclick="openLightboxParent(${i})">
-                <img src="${p}" alt="학습 사진 ${i+1}">
+              <div class="cal-photo-thumb" onclick="openLightboxParent(${i})">
+                <img src="${p}" alt="사진 ${i+1}" loading="lazy">
+                <div class="cal-photo-overlay">🔍</div>
               </div>
             `).join('')}
           </div>
         ` : `
-          <div class="empty-state" style="padding:24px">
-            <div class="empty-icon">📷</div>
-            <div class="empty-title">이 날 학습 기록이 없습니다</div>
+          <div class="cal-no-photo">
+            <div style="font-size:2.5rem;margin-bottom:8px">📭</div>
+            <div>선생님이 아직 사진을 올리지 않았어요</div>
           </div>
         `}
       </div>
+    ` : activeDaysThisMonth.length > 0 ? `
+      <div class="cal-hint-panel">
+        <div class="cal-hint-title">📆 이번 달 수업 날짜</div>
+        <div class="cal-activity-list">
+          ${activeDaysThisMonth.map(date => {
+            const [,, d] = date.split('-');
+            const dow = getDayOfWeek(date);
+            const cnt = counts[date];
+            return `
+            <div class="cal-activity-row" onclick="selectDate('${date}')">
+              <div class="cal-activity-date">${parseInt(d)}일 <span class="cal-activity-dow">${dow}요일</span></div>
+              <div class="cal-activity-meta">📷 ${cnt}장</div>
+              <div class="cal-activity-arrow">›</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
     ` : `
-      <div class="empty-state" style="padding:24px">
-        <div class="empty-icon">📅</div>
-        <div class="empty-title">날짜를 클릭하면 학습 내용을 볼 수 있어요</div>
-        <div class="empty-text" style="margin-top:4px">● 표시가 있는 날은 학습 기록이 있습니다</div>
+      <div class="cal-hint-panel">
+        <div class="cal-empty-hint">
+          <div class="hint-icon">📅</div>
+          <div class="hint-main">날짜를 탭하면 학습 내용을 볼 수 있어요</div>
+          <div class="hint-sub">숫자 배지가 있는 날은 사진이 올라와 있어요</div>
+        </div>
       </div>
     `}
   </div>`;
@@ -1233,7 +1283,28 @@ window.nextMonth = function() {
 window.selectDate = function(date) {
   S.selectedDate = S.selectedDate === date ? null : date;
   render();
+  if (S.selectedDate) setTimeout(() => {
+    document.querySelector('.cal-photo-panel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 50);
 };
+
+function setupCalendarSwipe() {
+  const el = document.getElementById('cal-swipe-area');
+  if (!el || el._swipeReady) return;
+  el._swipeReady = true;
+  let startX = 0, startY = 0;
+  el.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+  el.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      dx < 0 ? nextMonth() : prevMonth();
+    }
+  }, { passive: true });
+}
 
 window.openLightboxParent = function(idx) {
   if (!S.selectedDate || !S.parentStudentId) return;

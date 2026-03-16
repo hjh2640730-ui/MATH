@@ -28,6 +28,8 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const storage = firebase.storage();
+    // 오프라인 캐시: 두 번째 로드부터 즉시 표시
+    db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
   </script>
   <script src="/main.js"></script>
 </body>

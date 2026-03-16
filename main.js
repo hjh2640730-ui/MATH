@@ -161,10 +161,11 @@ const INITIAL_WORKBOOKS = [
 //  FIREBASE LISTENERS & SEED
 // ================================================================
 function setupListeners() {
-  const ready = { students: false, workbooks: false, progress: false, activities: false };
+  const ready = { students: false, workbooks: false };
 
   const checkReady = () => {
-    if (Object.values(ready).every(v => v)) {
+    // 학생·문제집만 로드되면 즉시 화면 표시 (progress/activities는 백그라운드)
+    if (ready.students && ready.workbooks) {
       _dataReady = true;
     }
     render();
@@ -185,14 +186,12 @@ function setupListeners() {
   db.collection('progress').onSnapshot(snap => {
     _progress = {};
     snap.docs.forEach(d => { _progress[d.id] = d.data().status || {}; });
-    ready.progress = true;
-    checkReady();
+    if (_dataReady) render();
   });
 
   db.collection('activities').onSnapshot(snap => {
     _activities = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    ready.activities = true;
-    checkReady();
+    if (_dataReady) render();
   });
 }
 

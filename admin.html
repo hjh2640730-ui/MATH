@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>관리자 페이지</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <header class="header">
+    <div class="container">
+      <h1>관리자 페이지</h1>
+      <a href="index.html" class="header-link">학생 페이지 →</a>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="container">
+
+      <!-- 로그인 -->
+      <div id="login-section" class="card">
+        <h2>관리자 로그인</h2>
+        <div class="form-group">
+          <label>비밀번호</label>
+          <input type="password" id="pw-input" placeholder="비밀번호 입력" autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary" id="login-btn">로그인</button>
+        <p id="login-error" class="error-msg hidden">비밀번호가 틀렸습니다.</p>
+      </div>
+
+      <!-- 관리 패널 -->
+      <div id="admin-panel" class="hidden">
+
+        <!-- 학생 선택 -->
+        <div class="card">
+          <h2>학생 선택</h2>
+          <div class="btn-group">
+            <button class="btn btn-outline active" data-student="kimsiying">김시영 (죽전고1)</button>
+            <button class="btn btn-outline" data-student="umtaehyun">엄태현 (대지중1)</button>
+          </div>
+        </div>
+
+        <!-- 탭 -->
+        <div class="tabs">
+          <button class="tab active" data-tab="admin-progress">진도 관리</button>
+          <button class="tab" data-tab="admin-photos">사진 업로드</button>
+        </div>
+
+        <!-- 진도 관리 -->
+        <div id="tab-admin-progress" class="tab-content">
+          <div id="admin-progress-list"></div>
+        </div>
+
+        <!-- 사진 업로드 -->
+        <div id="tab-admin-photos" class="tab-content hidden">
+          <div class="card">
+            <h3>사진 업로드</h3>
+            <div class="form-group">
+              <label>날짜</label>
+              <input type="date" id="upload-date">
+            </div>
+            <div class="form-group">
+              <label>사진 선택 (여러 장 가능)</label>
+              <input type="file" id="photo-files" accept="image/*" multiple>
+            </div>
+            <button class="btn btn-primary" id="upload-btn">업로드</button>
+            <p id="upload-status" class="status-msg hidden"></p>
+          </div>
+
+          <div class="card">
+            <h3>업로드된 사진 조회 / 삭제</h3>
+            <div class="form-row">
+              <div class="form-group" style="flex:1;margin-bottom:0">
+                <label>날짜</label>
+                <input type="date" id="view-date">
+              </div>
+              <div style="display:flex;align-items:flex-end">
+                <button class="btn btn-secondary" id="view-btn">조회</button>
+              </div>
+            </div>
+            <div id="admin-photo-gallery" class="photo-gallery admin-gallery"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-storage-compat.js"></script>
+  <script src="data.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

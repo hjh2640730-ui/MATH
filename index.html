@@ -1,36 +1,112 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>학습 관리 시스템</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>수학학원 학습현황</title>
+  <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link href='/style.css' rel='stylesheet'>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div id="app"></div>
-  <div id="modal-overlay" class="modal-overlay hidden"></div>
-  <div id="modal-root"></div>
-  <div id="lightbox" class="lb-overlay hidden"></div>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyDUcvTf8KnCXFidZb8CtF_XO989MZrN__I",
-      authDomain: "math-91276.firebaseapp.com",
-      projectId: "math-91276",
-      storageBucket: "math-91276.firebasestorage.app",
-      messagingSenderId: "28447479628",
-      appId: "1:28447479628:web:ce3c9e94c6bdeafde661e9"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const storage = firebase.storage();
-    // 오프라인 캐시: 두 번째 로드부터 즉시 표시
-    db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
-  </script>
-  <script src="/main.js"></script>
+
+  <header class="header">
+    <div class="container">
+      <h1>수학학원 학습현황</h1>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="container">
+
+      <!-- 학생 선택 -->
+      <div id="student-select">
+        <p class="section-label">학생을 선택하세요</p>
+        <div class="student-cards">
+          <div class="student-card" data-student="kimsiying">
+            <div class="student-avatar">김</div>
+            <div>
+              <div class="student-name">김시영</div>
+              <div class="student-school">죽전고 1학년</div>
+            </div>
+          </div>
+          <div class="student-card" data-student="umtaehyun">
+            <div class="student-avatar">엄</div>
+            <div>
+              <div class="student-name">엄태현</div>
+              <div class="student-school">대지중 1학년</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 학생 상세 -->
+      <div id="student-detail" class="hidden">
+        <button class="back-btn" id="back-btn">← 학생 목록</button>
+
+        <div class="student-header">
+          <div class="student-avatar large" id="detail-avatar"></div>
+          <div>
+            <h2 id="detail-name"></h2>
+            <p id="detail-school"></p>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <button class="tab active" data-tab="progress">진도현황</button>
+          <button class="tab" data-tab="calendar">학습일지</button>
+        </div>
+
+        <!-- 진도현황 탭 -->
+        <div id="tab-progress" class="tab-content">
+          <div id="progress-list"></div>
+        </div>
+
+        <!-- 달력 탭 -->
+        <div id="tab-calendar" class="tab-content hidden">
+          <div class="calendar-container">
+            <div class="calendar-nav">
+              <button id="prev-month">&#8249;</button>
+              <span id="calendar-title"></span>
+              <button id="next-month">&#8250;</button>
+            </div>
+            <div class="calendar-weekdays">
+              <div class="sun">일</div>
+              <div>월</div><div>화</div><div>수</div><div>목</div><div>금</div>
+              <div class="sat">토</div>
+            </div>
+            <div id="calendar-grid" class="calendar-grid"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- 사진 모달 -->
+  <div id="photo-modal" class="modal hidden">
+    <div class="modal-overlay" id="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title"></h3>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
+      <div id="photo-gallery" class="photo-gallery"></div>
+    </div>
+  </div>
+
+  <!-- 라이트박스 -->
+  <div id="lightbox" class="lightbox hidden">
+    <button class="lb-close" id="lb-close">✕</button>
+    <button class="lb-prev" id="lb-prev">&#8249;</button>
+    <img id="lb-img" src="" alt="">
+    <button class="lb-next" id="lb-next">&#8250;</button>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-storage-compat.js"></script>
+  <script src="data.js"></script>
+  <script src="main.js"></script>
 </body>
 </html>

@@ -272,12 +272,34 @@ function setupDragDrop() {
   });
 }
 
+// ===== IMAGE COMPRESS =====
+function compressImage(file, maxPx = 1920, quality = 0.82) {
+  return new Promise(resolve => {
+    if (!file.type.startsWith('image/')) { resolve(file); return; }
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width: w, height: h } = img;
+      if (w <= maxPx && h <= maxPx) { resolve(file); return; }
+      if (w > h) { h = Math.round(h * maxPx / w); w = maxPx; }
+      else { w = Math.round(w * maxPx / h); h = maxPx; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(blob => resolve(new File([blob], file.name, { type: 'image/jpeg' })), 'image/jpeg', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
 // ===== UPLOAD =====
 document.getElementById('upload-btn').addEventListener('click', async () => {
   const dateVal = document.getElementById('upload-date').value;
   const zone = document.getElementById('upload-zone');
   const inputFiles = document.getElementById('photo-files').files;
-  const files = (zone._droppedFiles && zone._droppedFiles.length > 0) ? zone._droppedFiles : inputFiles;
+  const files = Array.from((zone._droppedFiles && zone._droppedFiles.length > 0) ? zone._droppedFiles : inputFiles);
 
   const btn = document.getElementById('upload-btn');
   const progressDiv = document.getElementById('upload-progress');
@@ -285,28 +307,36 @@ document.getElementById('upload-btn').addEventListener('click', async () => {
   const barEl = document.getElementById('upload-bar');
 
   if (!dateVal) { showToast('날짜를 선택해주세요.', 'error'); return; }
-  if (!files || !files.length) { showToast('사진을 선택해주세요.', 'error'); return; }
+  if (!files.length) { showToast('사진을 선택해주세요.', 'error'); return; }
 
   btn.disabled = true;
   progressDiv.classList.remove('hidden');
   barEl.style.width = '0%';
-  statusEl.textContent = '업로드 준비 중...';
+  statusEl.textContent = `압축 중... (0/${files.length})`;
 
   try {
+    // 압축 병렬
+    const compressed = await Promise.all(files.map((f, i) =>
+      compressImage(f).then(c => { statusEl.textContent = `압축 중... (${i + 1}/${files.length})`; return c; })
+    ));
+
     const docRef = db.collection('photos').doc(`${adminStudent}_${dateVal}`);
     const existing = await docRef.get();
     const existingUrls = existing.exists ? (existing.data().urls || []) : [];
 
-    const newUrls = [];
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const storageRef = storage.ref(`photos/${adminStudent}/${dateVal}/${Date.now()}_${file.name}`);
-      const snap = await storageRef.put(file);
+    let done = 0;
+    statusEl.textContent = `업로드 중... (0/${files.length})`;
+
+    // 업로드 병렬
+    const newUrls = await Promise.all(compressed.map(async (file, i) => {
+      const ref = storage.ref(`photos/${adminStudent}/${dateVal}/${Date.now()}_${i}_${file.name}`);
+      const snap = await ref.put(file);
       const url = await snap.ref.getDownloadURL();
-      newUrls.push(url);
-      barEl.style.width = Math.round((i + 1) / files.length * 100) + '%';
-      statusEl.textContent = `업로드 중... ${i + 1}/${files.length}`;
-    }
+      done++;
+      barEl.style.width = Math.round(done / files.length * 100) + '%';
+      statusEl.textContent = `업로드 중... (${done}/${files.length})`;
+      return url;
+    }));
 
     await docRef.set({ studentId: adminStudent, date: dateVal, urls: [...existingUrls, ...newUrls] });
 

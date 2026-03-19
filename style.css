@@ -298,7 +298,8 @@ a { text-decoration: none; }
   transition: background 0.12s;
 }
 .section-row.done { background: var(--success-light); }
-.section-row:not(.done):hover { background: var(--divider); }
+.section-row.inprogress { background: #EFF6FF; }
+.section-row:not(.done):not(.inprogress):hover { background: var(--divider); }
 .sec-icon {
   width: 18px; height: 18px; border-radius: 50%;
   border: 1.5px solid var(--border);
@@ -306,12 +307,45 @@ a { text-decoration: none; }
   font-size: 0.6rem; flex-shrink: 0; color: transparent;
 }
 .section-row.done .sec-icon { background: var(--success); border-color: var(--success); color: #fff; }
+.section-row.inprogress .sec-icon { background: var(--primary); border-color: var(--primary); color: #fff; font-size: 0.7rem; }
 .sec-name { font-size: 0.8125rem; flex: 1; }
 .section-row.done .sec-name { color: var(--text-secondary); }
 .badge-done {
   background: var(--success); color: #fff;
   font-size: 0.625rem; padding: 2px 6px;
   border-radius: var(--r-full); font-weight: 600; flex-shrink: 0;
+}
+.badge-inprogress {
+  background: var(--primary); color: #fff;
+  font-size: 0.625rem; padding: 2px 6px;
+  border-radius: var(--r-full); font-weight: 600; flex-shrink: 0;
+}
+
+/* ── Admin 3-state progress ─────────────────────────────────── */
+.section-admin-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 6px 10px; border-radius: var(--r-sm); margin-bottom: 2px;
+}
+.sec-admin-name { font-size: 0.8125rem; flex: 1; }
+.status-btn-group { display: flex; gap: 4px; flex-shrink: 0; }
+.status-btn {
+  font-size: 0.7rem; font-weight: 600; padding: 3px 8px;
+  border-radius: var(--r-full); border: 1px solid var(--border);
+  background: transparent; color: var(--text-muted);
+  cursor: pointer; transition: all 0.12s;
+}
+.status-btn:hover { border-color: var(--primary); color: var(--primary); }
+.status-btn.active-none {
+  background: var(--divider); border-color: var(--divider);
+  color: var(--text-secondary);
+}
+.status-btn.active-inprogress {
+  background: #EFF6FF; border-color: var(--primary);
+  color: var(--primary);
+}
+.status-btn.active-done {
+  background: var(--success); border-color: var(--success);
+  color: #fff;
 }
 
 /* ── Calendar ───────────────────────────────────────────────── */

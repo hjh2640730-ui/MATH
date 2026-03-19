@@ -147,9 +147,14 @@ async function loadProgress() {
   for (const bookId of student.books) {
     try {
       const snap = await db.collection('progress').doc(`${currentStudent}_${bookId}`).get();
-      allProgressData[bookId] = snap.exists ? (snap.data().completed || []) : [];
+      if (snap.exists) {
+        const d = snap.data();
+        allProgressData[bookId] = d.status || (d.completed ? Object.fromEntries(d.completed.map(id => [id, 'done'])) : {});
+      } else {
+        allProgressData[bookId] = {};
+      }
     } catch {
-      allProgressData[bookId] = [];
+      allProgressData[bookId] = {};
     }
   }
 
@@ -162,7 +167,8 @@ function updateSummary() {
   let totalDone = 0, totalAll = 0;
   student.books.forEach(bookId => {
     const book = BOOKS[bookId];
-    totalDone += (allProgressData[bookId] || []).length;
+    const st = allProgressData[bookId] || {};
+    totalDone += Object.values(st).filter(v => v === 'done').length;
     totalAll += book.chapters.reduce((s, ch) => s + ch.sections.length, 0);
   });
   const pct = totalAll > 0 ? Math.round(totalDone / totalAll * 100) : 0;
@@ -177,9 +183,9 @@ function renderProgress(progressData) {
 
   student.books.forEach(bookId => {
     const book = BOOKS[bookId];
-    const completed = progressData[bookId] || [];
+    const st = progressData[bookId] || {};
     const total = book.chapters.reduce((s, ch) => s + ch.sections.length, 0);
-    const done = completed.length;
+    const done = Object.values(st).filter(v => v === 'done').length;
     const pct = total > 0 ? Math.round(done / total * 100) : 0;
     const icon = BOOK_ICONS[bookId] || '📚';
 
@@ -206,13 +212,15 @@ function renderProgress(progressData) {
         ${book.chapters.map(ch => `
           <div class="chapter-block">
             <div class="chapter-title">${ch.name}</div>
-            ${ch.sections.map(sec => `
-              <div class="section-row ${completed.includes(sec.id) ? 'done' : ''}">
-                <span class="sec-icon">${completed.includes(sec.id) ? '✓' : ''}</span>
+            ${ch.sections.map(sec => {
+              const s = st[sec.id] || 'none';
+              return `
+              <div class="section-row ${s === 'done' ? 'done' : s === 'inprogress' ? 'inprogress' : ''}">
+                <span class="sec-icon">${s === 'done' ? '✓' : s === 'inprogress' ? '→' : ''}</span>
                 <span class="sec-name">${sec.name}</span>
-                ${completed.includes(sec.id) ? '<span class="badge-done">완료</span>' : ''}
-              </div>
-            `).join('')}
+                ${s === 'done' ? '<span class="badge-done">완료</span>' : s === 'inprogress' ? '<span class="badge-inprogress">진행중</span>' : ''}
+              </div>`;
+            }).join('')}
           </div>
         `).join('')}
       </div>

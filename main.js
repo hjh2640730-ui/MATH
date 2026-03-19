@@ -1,7 +1,7 @@
 firebase.initializeApp(FIREBASE_CONFIG);
 const db = firebase.firestore();
 
-const ADMIN_PASSWORD = 'math1234';
+const ADMIN_PASSWORD = '1234';
 const AVATAR_COLORS = { kimsiying: '#2563EB', umtaehyun: '#0EA5E9' };
 const BOOK_ICONS = {
   rpm_mid1_1: '📗', gaenym_mid1_1: '📘', gaenym_mid1_2: '📙',
@@ -32,37 +32,6 @@ function showToast(msg, type = '') {
     toast.classList.add('fade-out');
     setTimeout(() => toast.remove(), 300);
   }, 2800);
-}
-
-// ===== ADMIN ACCESS =====
-document.getElementById('admin-access-btn').addEventListener('click', () => {
-  document.getElementById('admin-modal').classList.remove('hidden');
-  setTimeout(() => document.getElementById('admin-pw-input').focus(), 100);
-});
-
-document.getElementById('admin-modal-close').addEventListener('click', closeAdminModal);
-document.getElementById('admin-modal-overlay').addEventListener('click', closeAdminModal);
-
-function closeAdminModal() {
-  document.getElementById('admin-modal').classList.add('hidden');
-  document.getElementById('admin-pw-input').value = '';
-  document.getElementById('admin-pw-error').classList.add('hidden');
-}
-
-document.getElementById('admin-login-btn').addEventListener('click', tryAdminLogin);
-document.getElementById('admin-pw-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') tryAdminLogin();
-});
-
-function tryAdminLogin() {
-  const pw = document.getElementById('admin-pw-input').value;
-  if (pw === ADMIN_PASSWORD) {
-    window.location.href = 'admin.html';
-  } else {
-    document.getElementById('admin-pw-error').classList.remove('hidden');
-    document.getElementById('admin-pw-input').value = '';
-    document.getElementById('admin-pw-input').focus();
-  }
 }
 
 // ===== STUDENT SELECTION =====
@@ -214,11 +183,15 @@ function renderProgress(progressData) {
             <div class="chapter-title">${ch.name}</div>
             ${ch.sections.map(sec => {
               const s = st[sec.id] || 'none';
+              const badge = s === 'done'
+                ? '<span class="badge-done">완료</span>'
+                : s === 'inprogress'
+                ? '<span class="badge-inprogress">진행중</span>'
+                : '<span class="badge-none">미진행</span>';
               return `
-              <div class="section-row ${s === 'done' ? 'done' : s === 'inprogress' ? 'inprogress' : ''}">
-                <span class="sec-icon">${s === 'done' ? '✓' : s === 'inprogress' ? '→' : ''}</span>
+              <div class="section-row ${s}">
                 <span class="sec-name">${sec.name}</span>
-                ${s === 'done' ? '<span class="badge-done">완료</span>' : s === 'inprogress' ? '<span class="badge-inprogress">진행중</span>' : ''}
+                ${badge}
               </div>`;
             }).join('')}
           </div>
@@ -357,14 +330,11 @@ document.getElementById('lb-next').addEventListener('click', () => showLbImage(l
 document.addEventListener('keydown', e => {
   const lb = document.getElementById('lightbox');
   const modal = document.getElementById('photo-modal');
-  const adminModal = document.getElementById('admin-modal');
   if (!lb.classList.contains('hidden')) {
     if (e.key === 'ArrowLeft') showLbImage(lightboxIndex - 1);
     if (e.key === 'ArrowRight') showLbImage(lightboxIndex + 1);
     if (e.key === 'Escape') lb.classList.add('hidden');
   } else if (!modal.classList.contains('hidden') && e.key === 'Escape') {
     closeModal();
-  } else if (!adminModal.classList.contains('hidden') && e.key === 'Escape') {
-    closeAdminModal();
   }
 });

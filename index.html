@@ -16,13 +16,13 @@
         <div class="logo-icon">∑</div>
         <span class="logo-text">수학학원</span>
       </div>
-      <button class="admin-fab-header" id="admin-access-btn">
+      <a href="admin.html" class="admin-fab-header">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <rect x="3" y="11" width="18" height="11" rx="2"/>
           <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
         </svg>
         관리자
-      </button>
+      </a>
     </div>
   </header>
 
@@ -147,26 +147,6 @@
       </div>
     </div>
   </main>
-
-  <!-- 관리자 비밀번호 모달 -->
-  <div id="admin-modal" class="modal hidden">
-    <div class="modal-overlay" id="admin-modal-overlay"></div>
-    <div class="modal-content admin-login-modal">
-      <div class="modal-header">
-        <h3>관리자 접속</h3>
-        <button class="modal-close" id="admin-modal-close">✕</button>
-      </div>
-      <div style="padding:20px">
-        <p style="color:var(--text-muted);margin-bottom:14px;font-size:0.875rem">관리자 비밀번호를 입력하세요</p>
-        <div class="form-group">
-          <label>비밀번호</label>
-          <input type="password" id="admin-pw-input" class="input-field" placeholder="••••••••" autocomplete="current-password">
-        </div>
-        <p id="admin-pw-error" class="error-msg hidden">비밀번호가 틀렸습니다.</p>
-        <button class="btn btn-primary btn-full" id="admin-login-btn" style="margin-top:10px">이동</button>
-      </div>
-    </div>
-  </div>
 
   <!-- 사진 모달 -->
   <div id="photo-modal" class="modal hidden">

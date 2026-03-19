@@ -1,4 +1,4 @@
-const ADMIN_PASSWORD = 'math1234';
+const ADMIN_PASSWORD = '1234';
 
 firebase.initializeApp(FIREBASE_CONFIG);
 const db = firebase.firestore();
@@ -6,7 +6,7 @@ const storage = firebase.storage();
 
 // ===== STATE =====
 let adminStudent = 'kimsiying';
-let progressData = {};
+let statusData = {}; // { bookId: { sectionId: 'done'|'inprogress'|'none' } }
 
 // ===== TOAST =====
 function showToast(msg, type = '') {
@@ -85,9 +85,13 @@ async function loadStats() {
   for (const bookId of student.books) {
     try {
       const snap = await db.collection('progress').doc(`${adminStudent}_${bookId}`).get();
-      const completed = snap.exists ? (snap.data().completed || []) : [];
+      if (snap.exists) {
+        const d = snap.data();
+        const st = d.status || {};
+        const done = Object.values(st).filter(v => v === 'done').length;
+        totalDone += done;
+      }
       const book = BOOKS[bookId];
-      totalDone += completed.length;
       totalAll += book.chapters.reduce((s, ch) => s + ch.sections.length, 0);
     } catch {}
   }
@@ -108,8 +112,9 @@ function updateStatProgress() {
   const student = STUDENTS[adminStudent];
   let totalDone = 0, totalAll = 0;
   student.books.forEach(bookId => {
+    const st = statusData[bookId] || {};
+    totalDone += Object.values(st).filter(v => v === 'done').length;
     const book = BOOKS[bookId];
-    totalDone += (progressData[bookId] || []).length;
     totalAll += book.chapters.reduce((s, ch) => s + ch.sections.length, 0);
   });
   const pct = totalAll > 0 ? Math.round(totalDone / totalAll * 100) : 0;
@@ -119,7 +124,7 @@ function updateStatProgress() {
 
 // ===== ADMIN PROGRESS =====
 async function loadAdminProgress() {
-  progressData = {};
+  statusData = {};
   const student = STUDENTS[adminStudent];
   const list = document.getElementById('admin-progress-list');
   list.innerHTML = '<div class="loading">불러오는 중...</div>';
@@ -127,9 +132,22 @@ async function loadAdminProgress() {
   for (const bookId of student.books) {
     try {
       const snap = await db.collection('progress').doc(`${adminStudent}_${bookId}`).get();
-      progressData[bookId] = snap.exists ? (snap.data().completed || []) : [];
+      if (snap.exists) {
+        const d = snap.data();
+        if (d.status) {
+          statusData[bookId] = d.status;
+        } else if (d.completed) {
+          // 기존 데이터 마이그레이션
+          statusData[bookId] = {};
+          d.completed.forEach(id => { statusData[bookId][id] = 'done'; });
+        } else {
+          statusData[bookId] = {};
+        }
+      } else {
+        statusData[bookId] = {};
+      }
     } catch {
-      progressData[bookId] = [];
+      statusData[bookId] = {};
     }
   }
 
@@ -143,9 +161,10 @@ function renderAdminProgress() {
 
   student.books.forEach(bookId => {
     const book = BOOKS[bookId];
-    const completed = progressData[bookId] || [];
+    const st = statusData[bookId] || {};
     const total = book.chapters.reduce((s, ch) => s + ch.sections.length, 0);
-    const done = completed.length;
+    const done = Object.values(st).filter(v => v === 'done').length;
+    const inprog = Object.values(st).filter(v => v === 'inprogress').length;
     const pct = total > 0 ? Math.round(done / total * 100) : 0;
 
     const card = document.createElement('div');
@@ -153,7 +172,7 @@ function renderAdminProgress() {
     card.innerHTML = `
       <div class="card-header" style="margin-bottom:10px">
         <span class="card-title">${book.name}</span>
-        <span class="meta-badge ${pct === 100 ? 'done' : ''}">${done}/${total} · ${pct}%</span>
+        <span class="meta-badge ${pct === 100 ? 'done' : ''}">완료 ${done}/${total}</span>
       </div>
       <div class="book-progress-bar" style="margin-bottom:14px">
         <div class="book-progress-fill" style="width:${pct}%"></div>
@@ -161,45 +180,63 @@ function renderAdminProgress() {
       ${book.chapters.map(ch => `
         <div class="chapter-block">
           <div class="chapter-title">${ch.name}</div>
-          ${ch.sections.map(sec => `
-            <label class="check-label">
-              <input type="checkbox"
-                data-book="${bookId}"
-                data-section="${sec.id}"
-                ${completed.includes(sec.id) ? 'checked' : ''}>
-              <span>${sec.name}</span>
-            </label>
-          `).join('')}
+          ${ch.sections.map(sec => {
+            const cur = st[sec.id] || 'none';
+            return `
+              <div class="section-admin-row">
+                <span class="sec-admin-name">${sec.name}</span>
+                <div class="status-btn-group">
+                  <button class="status-btn ${cur === 'none' ? 'active-none' : ''}"
+                    data-book="${bookId}" data-section="${sec.id}" data-status="none">미진행</button>
+                  <button class="status-btn ${cur === 'inprogress' ? 'active-inprogress' : ''}"
+                    data-book="${bookId}" data-section="${sec.id}" data-status="inprogress">진행중</button>
+                  <button class="status-btn ${cur === 'done' ? 'active-done' : ''}"
+                    data-book="${bookId}" data-section="${sec.id}" data-status="done">완료</button>
+                </div>
+              </div>
+            `;
+          }).join('')}
         </div>
       `).join('')}
     `;
     list.appendChild(card);
   });
 
-  list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-    cb.addEventListener('change', () => toggleSection(cb.dataset.book, cb.dataset.section, cb.checked));
+  list.querySelectorAll('.status-btn').forEach(btn => {
+    btn.addEventListener('click', () => setStatus(btn.dataset.book, btn.dataset.section, btn.dataset.status));
   });
 }
 
-async function toggleSection(bookId, sectionId, isChecked) {
-  const completed = [...(progressData[bookId] || [])];
-  if (isChecked && !completed.includes(sectionId)) {
-    completed.push(sectionId);
-  } else if (!isChecked) {
-    const idx = completed.indexOf(sectionId);
-    if (idx > -1) completed.splice(idx, 1);
-  }
-  progressData[bookId] = completed;
+async function setStatus(bookId, sectionId, newStatus) {
+  if (!statusData[bookId]) statusData[bookId] = {};
+  const prev = statusData[bookId][sectionId] || 'none';
+  statusData[bookId][sectionId] = newStatus;
+
+  // UI 즉시 반영
+  const btns = document.querySelectorAll(`[data-book="${bookId}"][data-section="${sectionId}"]`);
+  btns.forEach(b => {
+    b.className = 'status-btn';
+    if (b.dataset.status === newStatus) {
+      b.classList.add(`active-${newStatus}`);
+    }
+  });
+
+  // 진도바 업데이트
+  updateStatProgress();
 
   try {
-    await db.collection('progress').doc(`${adminStudent}_${bookId}`).set({ completed });
-    updateStatProgress();
+    const st = statusData[bookId];
+    const completed = Object.entries(st).filter(([,v]) => v === 'done').map(([k]) => k);
+    await db.collection('progress').doc(`${adminStudent}_${bookId}`).set({ status: st, completed });
   } catch (e) {
     showToast('저장 실패: ' + e.message, 'error');
-    const cb = document.querySelector(`input[data-book="${bookId}"][data-section="${sectionId}"]`);
-    if (cb) cb.checked = !isChecked;
-    progressData[bookId] = progressData[bookId].filter(id => id !== sectionId);
-    if (!isChecked && !progressData[bookId].includes(sectionId)) progressData[bookId].push(sectionId);
+    // 롤백
+    statusData[bookId][sectionId] = prev;
+    const btns2 = document.querySelectorAll(`[data-book="${bookId}"][data-section="${sectionId}"]`);
+    btns2.forEach(b => {
+      b.className = 'status-btn';
+      if (b.dataset.status === prev) b.classList.add(`active-${prev}`);
+    });
   }
 }
 
@@ -227,12 +264,9 @@ function setupDragDrop() {
     zone.classList.remove('drag-over');
     const dt = e.dataTransfer;
     if (dt.files.length) {
-      // Update file preview label
       const preview = document.getElementById('file-preview');
       preview.textContent = `✓ ${dt.files.length}장 선택됨`;
       preview.style.color = 'var(--success)';
-      // Store files reference for upload
-      zone.dataset.droppedCount = dt.files.length;
       zone._droppedFiles = dt.files;
     }
   });
@@ -270,8 +304,7 @@ document.getElementById('upload-btn').addEventListener('click', async () => {
       const snap = await storageRef.put(file);
       const url = await snap.ref.getDownloadURL();
       newUrls.push(url);
-      const pct = Math.round((i + 1) / files.length * 100);
-      barEl.style.width = pct + '%';
+      barEl.style.width = Math.round((i + 1) / files.length * 100) + '%';
       statusEl.textContent = `업로드 중... ${i + 1}/${files.length}`;
     }
 
@@ -281,13 +314,10 @@ document.getElementById('upload-btn').addEventListener('click', async () => {
     document.getElementById('photo-files').value = '';
     document.getElementById('file-preview').textContent = '';
     zone._droppedFiles = null;
-
     setTimeout(() => { progressDiv.classList.add('hidden'); barEl.style.width = '0%'; }, 2000);
 
-    // Refresh stats
     const allSnap = await db.collection('photos').where('studentId', '==', adminStudent).get();
     document.getElementById('stat-photos').textContent = allSnap.size + '일';
-
   } catch (e) {
     showToast('업로드 실패: ' + e.message, 'error');
     progressDiv.classList.add('hidden');
@@ -308,25 +338,21 @@ async function viewPhotos() {
 
   try {
     const snap = await db.collection('photos').doc(`${adminStudent}_${dateVal}`).get();
-
     if (!snap.exists || !snap.data().urls?.length) {
       gallery.innerHTML = '<p style="color:var(--text-muted);padding:16px 0;text-align:center;font-size:0.875rem">등록된 사진이 없습니다.</p>';
       return;
     }
-
     const urls = snap.data().urls;
     gallery.innerHTML = '';
-
     urls.forEach((url, i) => {
       const wrap = document.createElement('div');
       wrap.className = 'admin-photo-wrap';
       wrap.innerHTML = `
         <img src="${url}" class="gallery-img" alt="사진 ${i + 1}" loading="lazy">
-        <button class="del-btn" data-url="${url}" data-date="${dateVal}" title="삭제">✕</button>
+        <button class="del-btn" data-url="${url}" data-date="${dateVal}">✕</button>
       `;
       gallery.appendChild(wrap);
     });
-
     gallery.querySelectorAll('.del-btn').forEach(btn => {
       btn.addEventListener('click', () => deletePhoto(btn.dataset.date, btn.dataset.url));
     });

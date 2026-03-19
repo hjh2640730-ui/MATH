@@ -2,17 +2,27 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>수학학원 학습현황</title>
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
 
   <header class="header">
-    <div class="container">
-      <h1>수학학원 학습현황</h1>
+    <div class="container header-inner">
+      <div class="header-logo">
+        <div class="logo-icon">∑</div>
+        <span class="logo-text">수학학원</span>
+      </div>
+      <button class="admin-fab-header" id="admin-access-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <rect x="3" y="11" width="18" height="11" rx="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        관리자
+      </button>
     </div>
   </header>
 
@@ -21,40 +31,87 @@
 
       <!-- 학생 선택 -->
       <div id="student-select">
-        <p class="section-label">학생을 선택하세요</p>
+        <div class="hero-section">
+          <div class="hero-label">학습 현황</div>
+          <h2 class="hero-title">학생을 선택하세요</h2>
+          <p class="hero-sub">아래에서 학생을 선택하면 진도와 학습일지를 볼 수 있어요</p>
+        </div>
         <div class="student-cards">
           <div class="student-card" data-student="kimsiying">
-            <div class="student-avatar">김</div>
-            <div>
+            <div class="student-avatar-wrap">
+              <div class="student-avatar" style="--avatar-color:#2563EB">김</div>
+              <div class="avatar-glow" style="--glow-color:#2563EB"></div>
+            </div>
+            <div class="student-info">
               <div class="student-name">김시영</div>
               <div class="student-school">죽전고 1학년</div>
             </div>
+            <span class="student-arrow">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 18l6-6-6-6"/>
+              </svg>
+            </span>
           </div>
           <div class="student-card" data-student="umtaehyun">
-            <div class="student-avatar">엄</div>
-            <div>
+            <div class="student-avatar-wrap">
+              <div class="student-avatar" style="--avatar-color:#0EA5E9">엄</div>
+              <div class="avatar-glow" style="--glow-color:#0EA5E9"></div>
+            </div>
+            <div class="student-info">
               <div class="student-name">엄태현</div>
               <div class="student-school">대지중 1학년</div>
             </div>
+            <span class="student-arrow">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 18l6-6-6-6"/>
+              </svg>
+            </span>
           </div>
         </div>
       </div>
 
       <!-- 학생 상세 -->
       <div id="student-detail" class="hidden">
-        <button class="back-btn" id="back-btn">← 학생 목록</button>
 
-        <div class="student-header">
-          <div class="student-avatar large" id="detail-avatar"></div>
-          <div>
-            <h2 id="detail-name"></h2>
-            <p id="detail-school"></p>
+        <!-- 히어로 -->
+        <div class="detail-hero">
+          <button class="back-btn" id="back-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            목록으로
+          </button>
+          <div class="detail-hero-content">
+            <div class="student-avatar large" id="detail-avatar"></div>
+            <div class="detail-info">
+              <h2 id="detail-name"></h2>
+              <p id="detail-school"></p>
+            </div>
+          </div>
+          <div class="progress-summary">
+            <div class="summary-item">
+              <span class="summary-label">전체 진도</span>
+              <span class="summary-value" id="summary-pct">—</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">완료 단원</span>
+              <span class="summary-value" id="summary-done">—</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">수업일</span>
+              <span class="summary-value" id="summary-days">—</span>
+            </div>
           </div>
         </div>
 
+        <!-- 탭 -->
         <div class="tabs">
-          <button class="tab active" data-tab="progress">진도현황</button>
-          <button class="tab" data-tab="calendar">학습일지</button>
+          <button class="tab active" data-tab="progress">
+            <span class="tab-icon">📚</span>진도현황
+          </button>
+          <button class="tab" data-tab="calendar">
+            <span class="tab-icon">📅</span>학습일지
+          </button>
         </div>
 
         <!-- 진도현황 탭 -->
@@ -66,9 +123,17 @@
         <div id="tab-calendar" class="tab-content hidden">
           <div class="calendar-container">
             <div class="calendar-nav">
-              <button id="prev-month">&#8249;</button>
-              <span id="calendar-title"></span>
-              <button id="next-month">&#8250;</button>
+              <button id="prev-month" class="cal-nav-btn">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M15 18l-6-6 6-6"/>
+                </svg>
+              </button>
+              <span id="calendar-title" class="cal-title"></span>
+              <button id="next-month" class="cal-nav-btn">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M9 18l6-6-6-6"/>
+                </svg>
+              </button>
             </div>
             <div class="calendar-weekdays">
               <div class="sun">일</div>
@@ -78,10 +143,30 @@
             <div id="calendar-grid" class="calendar-grid"></div>
           </div>
         </div>
-      </div>
 
+      </div>
     </div>
   </main>
+
+  <!-- 관리자 비밀번호 모달 -->
+  <div id="admin-modal" class="modal hidden">
+    <div class="modal-overlay" id="admin-modal-overlay"></div>
+    <div class="modal-content admin-login-modal">
+      <div class="modal-header">
+        <h3>관리자 접속</h3>
+        <button class="modal-close" id="admin-modal-close">✕</button>
+      </div>
+      <div style="padding:20px">
+        <p style="color:var(--text-muted);margin-bottom:14px;font-size:0.875rem">관리자 비밀번호를 입력하세요</p>
+        <div class="form-group">
+          <label>비밀번호</label>
+          <input type="password" id="admin-pw-input" class="input-field" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <p id="admin-pw-error" class="error-msg hidden">비밀번호가 틀렸습니다.</p>
+        <button class="btn btn-primary btn-full" id="admin-login-btn" style="margin-top:10px">이동</button>
+      </div>
+    </div>
+  </div>
 
   <!-- 사진 모달 -->
   <div id="photo-modal" class="modal hidden">
@@ -102,6 +187,9 @@
     <img id="lb-img" src="" alt="">
     <button class="lb-next" id="lb-next">&#8250;</button>
   </div>
+
+  <!-- 토스트 -->
+  <div id="toast-container" class="toast-container"></div>
 
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
